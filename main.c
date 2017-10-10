@@ -21,7 +21,7 @@
 #include <string.h>
 #include <assert.h>
 
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #   define log(...)    fprintf(stderr, __VA_ARGS__)
@@ -264,8 +264,9 @@ vmNext(VM* vm) {
 
     if( ip >= fpInsCount ) {
         assert(ip == fpInsCount);
-        log("\tret\n");
+        log("\tret - ");
         vmPopReturn(vm);    // ip exceeds instruction count, return
+        log("%d:%d\n", vm->fp, vm->ip);
     } else {
         uint32_t*   ins     = &vm->ins[func.u.interp.insOffset];
         uint32_t    opcode  = ins[ip];
@@ -273,7 +274,10 @@ vmNext(VM* vm) {
 
 
         if( vm->ip < fpInsCount ) {
+            log("\tcall");
             vmPushReturn(vm);   // normal call: push return value
+        } else {
+            log("\ttail");
         }
 
         uint32_t    operation   = vmGetOperation(opcode);
@@ -281,7 +285,7 @@ vmNext(VM* vm) {
 
         switch( operation ) {
         case OP_VALUE:  // value
-            log("\t%u\n", operand);
+            log("\tvalue %u\n", operand);
             vmPushValue(vm, operand);
             break;
         case OP_CALL:   // call
@@ -408,6 +412,19 @@ tokToInt(char* buff) {
 
 static
 void
+decompileOpcode(VM* vm, uint32_t opcode) {
+    switch(opcode & OP_CALL) {
+    case OP_VALUE:
+        fprintf(stdout, "\t%u\n", opcode);
+        break;
+    case OP_CALL:
+        fprintf(stdout, "\t%s\n", &vm->chars[vm->funcs[opcode & 0x7FFFFFFF].nameOffset]);
+        break;
+    }
+}
+
+static
+void
 vmStartFuncCompilation(VM* vm) {
     assert(vm->cfsCount < vm->cfsCap);
 
@@ -443,15 +460,22 @@ void
 vmFinishFuncCompilation(VM* vm) {
     assert(vm->cfsCount > 0);
 
-    uint32_t    insCount = 0;
+    uint32_t    funcId      = vm->cfs[vm->cfsCount - 1].funcId;
+
+    log("finish %s (%d):\n", &vm->chars[vm->funcs[funcId].nameOffset], funcId);
+
+    uint32_t    insCount    = 0;
+    uint32_t    insOffset   = vm->insCount;
+
     for( uint32_t ci = vm->cfs[vm->cfsCount - 1].ciStart; ci < vm->cisCount; ++ci) {
         ++insCount;
         vmPushInstruction(vm, vm->cis[ci]);
+        decompileOpcode(vm, vm->cis[ci]);
     }
 
     vm->cisCount    = vm->cfs[vm->cfsCount - 1].ciStart;
-    vm->funcs[vm->cfs[vm->cfsCount - 1].funcId].u.interp.insOffset  = vm->cfs[vm->cfsCount - 1].ciStart;
-    vm->funcs[vm->cfs[vm->cfsCount - 1].funcId].u.interp.insCount   = insCount;
+    vm->funcs[funcId].u.interp.insOffset  = insOffset;
+    vm->funcs[funcId].u.interp.insCount   = insCount;
     --vm->cfsCount;
 }
 
@@ -521,6 +545,43 @@ vmModUInt(VM* vm) {
     vmPushValue(vm, a % b);
 }
 
+
+static
+void
+vmCond(VM* vm) {
+    uint32_t    elseExp = vmPopValue(vm);
+    uint32_t    thenExp = vmPopValue(vm);
+    uint32_t    boolExp = vmPopValue(vm);
+
+    if( boolExp != 0 ) {
+        vm->fp  = thenExp;
+    } else {
+        vm->fp  = elseExp;
+    }
+
+    vm->ip = 0;
+}
+
+static
+void
+vmIntEq(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vmPushValue(vm, a == b);
+}
+
+
+static
+void
+vmIntNotEq(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vmPushValue(vm, a != b);
+}
+
+
 static
 void
 vmListWords(VM* vm) {
@@ -529,18 +590,6 @@ vmListWords(VM* vm) {
     }
 }
 
-static
-void
-decompileOpcode(VM* vm, uint32_t opcode) {
-    switch(opcode & OP_CALL) {
-    case OP_VALUE:
-        fprintf(stdout, "\t%u\n", opcode);
-        break;
-    case OP_CALL:
-        fprintf(stdout, "\t%s\n", &vm->chars[vm->funcs[opcode & 0x7FFFFFFF].nameOffset]);
-        break;
-    }
-}
 
 static
 void
@@ -548,7 +597,7 @@ vmSee(VM* vm) {
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
 
-    uint32_t    funcId  = vmAllocateInterpFunction(vm, token);
+    uint32_t    funcId  = vmFindFunction(vm, token);
 
     switch(funcId) {
     case 0:
@@ -611,7 +660,10 @@ vmReadEvalPrintLoop(VM* vm) {
                 switch( vm->funcs[wordId - 1].type ) {
                 case FT_INTERP: {
                     uint32_t    origRetCount    = vm->rsCount;
+                    vm->fp  = 0;
+                    vm->ip  = 0;
                     vmPushReturn(vm);
+
                     vm->fp  = wordId - 1;
                     vm->ip  = 0;
                     while(!vm->quit && vm->rsCount > origRetCount) {
@@ -634,6 +686,8 @@ vmReadEvalPrintLoop(VM* vm) {
 
 static
 const NativeFunctionEntry entries[]  = {
+    { "repl",       false,  vmReadEvalPrintLoop     },
+
     { ":",          true,   vmStartFuncCompilation  },
     { "!",          true,   vmStartMacroCompilation },
     { ";",          true,   vmFinishFuncCompilation },
@@ -649,6 +703,11 @@ const NativeFunctionEntry entries[]  = {
     { "*",          false,  vmMulUInt               },
     { "/",          false,  vmDivUInt               },
     { "%",          false,  vmModUInt               },
+
+    { "=",          false,  vmIntEq                 },
+    { "<>",         false,  vmIntNotEq              },
+
+    { "cond",       false,  vmCond                  },
 
     { "quit",       false,  vmQuit                  },
 
@@ -740,7 +799,7 @@ vmRelease(VM* vm) {
 
 int
 main(int argc, char* argv[]) {
-    printf("%d\n", sizeof(VM));
+    printf("nanoforth 2017(c) Wael El Oraiby.\n");
 
     VM* vm = vmNew(4096, 65536, 65536, 1024, 1024, 1024, 2 * 65536, 32768, 64, 65536);
 
