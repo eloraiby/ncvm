@@ -412,6 +412,12 @@ tokToInt(char* buff) {
     return value;
 }
 
+static inline
+bool
+isInCompileMode(VM* vm) {
+    return vm->cfsCount > 0;
+}
+
 static
 void
 decompileOpcode(VM* vm, uint32_t opcode) {
@@ -492,6 +498,20 @@ vmReadString(VM* vm) {
     }
 
     vmPushValue(vm, strIdx);
+}
+
+static
+void
+vmWordAddress(VM* vm) {
+    char    token[MAX_TOKEN_SIZE + 1] = { 0 };
+    readToken(vm, MAX_TOKEN_SIZE, token);
+    uint32_t funcId = vmFindFunction(vm, token);
+    assert(funcId != 0);
+    if( isInCompileMode(vm) ) {
+        vmPushCompilerInstruction(vm, funcId - 1);
+    } else {
+        vmPushValue(vm, funcId - 1);
+    }
 }
 
 static
@@ -628,11 +648,6 @@ vmQuit(VM* vm) {
     vm->quit    = true;
 }
 
-static inline
-bool
-isInCompileMode(VM* vm) {
-    return vm->cfsCount > 0;
-}
 
 static
 void
@@ -689,13 +704,14 @@ vmReadEvalPrintLoop(VM* vm) {
 
 static
 const NativeFunctionEntry entries[]  = {
-    { "repl",       false,  vmReadEvalPrintLoop     },
+    { "repl",       false,  vmReadEvalPrintLoop     },  // should always be @0
 
     { ":",          true,   vmStartFuncCompilation  },
     { "!",          true,   vmStartMacroCompilation },
     { ";",          true,   vmFinishFuncCompilation },
     { ".i",         true,   vmPrintInt              },
     { "\"",         true,   vmReadString            },
+    { "@",          true,   vmWordAddress           },
 
     { "lsw",        false,  vmListWords             },
     { "see",        false,  vmSee                   },
