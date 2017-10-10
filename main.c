@@ -21,12 +21,10 @@
 #include <string.h>
 #include <assert.h>
 
-#define DEBUG
-
-#ifdef DEBUG
-#   define log(...)    fprintf(stderr, __VA_ARGS__)
-#else
+#ifdef NDEBUG
 #   define log(...)
+#else
+#   define log(...)    fprintf(stderr, __VA_ARGS__)
 #endif
 
 #ifndef __cplusplus
