@@ -177,7 +177,6 @@ vmPopReturn(VM* vm) {
     Return  r   = vm->rs[vm->rsCount];
     vm->fp  = r.fp;
     vm->ip  = r.ip;
-    --vm->rsCount;
 }
 
 static inline
@@ -266,18 +265,16 @@ vmNext(VM* vm) {
         assert(ip == fpInsCount);
         log("\tret - ");
         vmPopReturn(vm);    // ip exceeds instruction count, return
-        log("%d:%d\n", vm->fp, vm->ip);
+        log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
     } else {
         uint32_t*   ins     = &vm->ins[func.u.interp.insOffset];
         uint32_t    opcode  = ins[ip];
         ++vm->ip;
 
+        bool        pushReturn  = false;
 
         if( vm->ip < fpInsCount ) {
-            log("\tcall");
-            vmPushReturn(vm);   // normal call: push return value
-        } else {
-            log("\ttail");
+            pushReturn  = true;
         }
 
         uint32_t    operation   = vmGetOperation(opcode);
@@ -285,12 +282,19 @@ vmNext(VM* vm) {
 
         switch( operation ) {
         case OP_VALUE:  // value
-            log("\tvalue %u\n", operand);
+            log("\t%u\n", operand);
             vmPushValue(vm, operand);
             break;
         case OP_CALL:   // call
+            if( pushReturn ) {
+                log("\tcall ");
+                vmPushReturn(vm);   // normal call: push return value
+            } else {
+                log("\ttail ");
+            }
+
             fName   = &vm->chars[vm->funcs[operand].nameOffset];
-            log("\t%s ", fName);
+            log("[%d]\t%s ", vm->rsCount, fName);
 
             switch(vm->funcs[operand].type) {
             case FT_NATIVE:
@@ -663,6 +667,7 @@ vmReadEvalPrintLoop(VM* vm) {
                     vm->fp  = 0;
                     vm->ip  = 0;
                     vmPushReturn(vm);
+                    log("starting with depth: %d\n", origRetCount);
 
                     vm->fp  = wordId - 1;
                     vm->ip  = 0;
