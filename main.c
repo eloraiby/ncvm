@@ -298,6 +298,10 @@ vmNext(VM* vm) {
             case FT_NATIVE:
                 log("<NAT>\n");
                 vm->funcs[operand].u.native(vm);
+                if( pushReturn ) {
+                    vmPopReturn(vm);
+                }
+
                 break;
             case FT_INTERP:
                 log("<INT>\n");
@@ -573,36 +577,74 @@ void
 vmCond(VM* vm) {
     uint32_t    elseExp = vmPopValue(vm);
     uint32_t    thenExp = vmPopValue(vm);
-    uint32_t    boolExp = vmPopValue(vm);
 
-    if( boolExp != 0 ) {
+    if( vm->flags.bf != 0 ) {
         vm->fp  = thenExp;
     } else {
         vm->fp  = elseExp;
     }
 
     vm->ip = 0;
+    vm->flags.bf    = false;    // clear the boolean flag always after test
 }
 
 static
 void
-vmIntEq(VM* vm) {
+vmUIntEq(VM* vm) {
     uint32_t    b   = vmPopValue(vm);
     uint32_t    a   = vmPopValue(vm);
 
-    vmPushValue(vm, a == b);
+    vm->flags.bf    = (a == b);
 }
 
 
 static
 void
-vmIntNotEq(VM* vm) {
+vmUIntNotEq(VM* vm) {
     uint32_t    b   = vmPopValue(vm);
     uint32_t    a   = vmPopValue(vm);
 
-    vmPushValue(vm, a != b);
+    vm->flags.bf    = (a != b);
 }
 
+static
+void
+vmUIntGEq(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vm->flags.bf    = (a >= b);
+}
+
+
+static
+void
+vmUIntLEq(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vm->flags.bf    = (a <= b);
+}
+
+
+static
+void
+vmUIntGT(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vm->flags.bf    = (a > b);
+}
+
+
+static
+void
+vmUIntLT(VM* vm) {
+    uint32_t    b   = vmPopValue(vm);
+    uint32_t    a   = vmPopValue(vm);
+
+    vm->flags.bf    = (a < b);
+}
 
 static
 void
@@ -723,10 +765,14 @@ const NativeFunctionEntry entries[]  = {
     { "/",          false,  vmDivUInt               },
     { "%",          false,  vmModUInt               },
 
-    { "=",          false,  vmIntEq                 },
-    { "<>",         false,  vmIntNotEq              },
+    { "=",          false,  vmUIntEq                },
+    { "<>",         false,  vmUIntNotEq             },
+    { ">=",         false,  vmUIntGEq               },
+    { "<=",         false,  vmUIntLEq               },
+    { ">",          false,  vmUIntGT                },
+    { "<",          false,  vmUIntLT                },
 
-    { "cond",       false,  vmCond                  },
+    { "?",          false,  vmCond                  },
 
     { "quit",       false,  vmQuit                  },
 
