@@ -299,6 +299,7 @@ vmNext(VM* vm) {
                 log("<NAT>\n");
                 vm->funcs[operand].u.native(vm);
                 if( pushReturn ) {
+                    log("\tret<NAT>\n");
                     vmPopReturn(vm);
                 }
 
