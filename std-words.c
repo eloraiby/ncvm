@@ -17,26 +17,26 @@
 
 #include "nanoforth.h"
 
-static inline
+INLINE
 bool
 isSpace(char ch) {
     return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\a';
 }
 
-static inline
+INLINE
 bool
 isDigit(char ch) {
     return (ch >= '0' && ch <= '9');
 }
 
-static inline
+INLINE
 bool
 isInt(const char* buff) {
     while(isDigit(*buff)) { ++buff; }
     return *buff == '\0';
 }
 
-static inline
+INLINE
 int
 readChar(VM* vm) {
     assert(vm->fsCount > 0);
