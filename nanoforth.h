@@ -30,7 +30,7 @@
 #endif
 
 #ifdef __GNUC__
-#   define INLINE static inline __attribute__((unused))
+#   define INLINE static __attribute__((always_inline)) inline
 #else
 #   define INLINE static inline
 #endif
