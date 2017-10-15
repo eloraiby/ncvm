@@ -73,7 +73,12 @@ vmFindFunction(VM* vm, const char* str) {
 
 uint32_t
 vmAllocateInterpFunction(VM* vm, const char* str) {
-    Function    f   = { .type = FT_INTERP, .isImmediate = false, .nameOffset = addConstString(vm, str), .u = { .interp = { .insOffset = 0, .insCount = 0 } } };
+    Function    f   = {
+        .type           = FT_INTERP,
+        .isImmediate    = false,
+        .nameOffset     = addConstString(vm, str),
+        .u              = { .interp = { .insOffset = 0, .insCount = 0 } }
+    };
     uint32_t    fidx    = vm->funcCount;
     vm->funcs[vm->funcCount]    = f;
     ++vm->funcCount;
@@ -82,14 +87,18 @@ vmAllocateInterpFunction(VM* vm, const char* str) {
 
 uint32_t
 vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native) {
-    Function    f   = { .type = FT_NATIVE, .isImmediate = isImmediate, .nameOffset = addConstString(vm, str), .u = { .native = native } };
+    Function    f   = {
+        .type           = FT_NATIVE,
+        .isImmediate    = isImmediate,
+        .nameOffset     = addConstString(vm, str),
+        .u              = { .native = native }
+    };
+
     uint32_t    fidx    = vm->funcCount;
     vm->funcs[vm->funcCount]    = f;
     ++vm->funcCount;
     return fidx;
 }
-
-
 
 void
 vmNext(VM* vm) {
@@ -125,12 +134,10 @@ vmNext(VM* vm) {
         uint32_t    operation   = vmGetOperation(opcode);
         uint32_t    operand     = vmGetOperand(opcode);
 
-        switch( operation ) {
-        case OP_VALUE:  // value
+        if( operation == OP_VALUE ) {
             log("\t%u\n", operand);
             vmPushValue(vm, operand);
-            break;
-        case OP_CALL:   // call
+        } else { // OP_CALL
             if( pushReturn ) {
                 log("\tcall ");
                 vmPushReturn(vm);   // normal call: push return value
@@ -141,24 +148,18 @@ vmNext(VM* vm) {
             fName   = &vm->chars[vm->funcs[operand].nameOffset];
             log("[%d]\t%s ", vm->rsCount, fName);
 
-            switch(vm->funcs[operand].type) {
-            case FT_NATIVE:
+            if(vm->funcs[operand].type == FT_NATIVE) {
                 log("<NAT>\n");
                 vm->funcs[operand].u.native(vm);
                 if( pushReturn ) {
                     log("\tret<NAT>\n");
                     vmPopReturn(vm);
                 }
-
-                break;
-            case FT_INTERP:
+            } else {    // FT_INTERP
                 log("<INT>\n");
                 vm->fp  = operand;
                 vm->ip  = 0;
-                break;
             }
-
-            break;
         }
     }
 }

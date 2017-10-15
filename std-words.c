@@ -399,37 +399,39 @@ vmReadEvalPrintLoop(VM* vm) {
     }
 }
 
+#define ALL 0xFFFFFFFF  /* mostly used for immediates/macros    */
+
 static
 const NativeFunctionEntry entries[]  = {
-    { "repl",       false,  vmReadEvalPrintLoop     },  // should always be @0
+    { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },  // should always be @0
 
-    { ":",          true,   vmStartFuncCompilation  },
-    { "!",          true,   vmStartMacroCompilation },
-    { ";",          true,   vmFinishFuncCompilation },
-    { ".i",         true,   vmPrintInt              },
-    { "\"",         true,   vmReadString            },
-    { "@",          true,   vmWordAddress           },
+    { ":",          true,   vmStartFuncCompilation,     ALL,    ALL },
+    { "!",          true,   vmStartMacroCompilation,    ALL,    ALL },
+    { ";",          true,   vmFinishFuncCompilation,    ALL,    ALL },
+    { "\"",         true,   vmReadString,               ALL,    ALL },
+    { "@",          true,   vmWordAddress,              ALL,    ALL },
 
-    { "lsw",        false,  vmListWords             },
-    { "see",        false,  vmSee                   },
+    { ".i",         false,  vmPrintInt,                 1,      0   },
+    { "lsw",        false,  vmListWords,                0,      0   },
+    { "see",        false,  vmSee,                      1,      0   },
 
-    { "dup",        false,  vmDup                   },
-    { "+",          false,  vmAddUInt               },
-    { "-",          false,  vmSubUInt               },
-    { "*",          false,  vmMulUInt               },
-    { "/",          false,  vmDivUInt               },
-    { "%",          false,  vmModUInt               },
+    { "dup",        false,  vmDup,                      1,      2   },
+    { "+",          false,  vmAddUInt,                  2,      1   },
+    { "-",          false,  vmSubUInt,                  2,      1   },
+    { "*",          false,  vmMulUInt,                  2,      1   },
+    { "/",          false,  vmDivUInt,                  2,      1   },
+    { "%",          false,  vmModUInt,                  2,      1   },
 
-    { "=",          false,  vmUIntEq                },
-    { "<>",         false,  vmUIntNotEq             },
-    { ">=",         false,  vmUIntGEq               },
-    { "<=",         false,  vmUIntLEq               },
-    { ">",          false,  vmUIntGT                },
-    { "<",          false,  vmUIntLT                },
+    { "=",          false,  vmUIntEq,                   2,      0   },
+    { "<>",         false,  vmUIntNotEq,                2,      0   },
+    { ">=",         false,  vmUIntGEq,                  2,      0   },
+    { "<=",         false,  vmUIntLEq,                  2,      0   },
+    { ">",          false,  vmUIntGT,                   2,      0   },
+    { "<",          false,  vmUIntLT,                   2,      0   },
 
-    { "?",          false,  vmCond                  },
+    { "?",          false,  vmCond,                     2,      0   },
 
-    { "quit",       false,  vmQuit                  },
+    { "quit",       false,  vmQuit,                     0,      0   },
 
 };
 

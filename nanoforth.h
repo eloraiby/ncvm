@@ -57,14 +57,16 @@ typedef struct {
 typedef void (*NativeFunction)(VM* vm);
 
 typedef enum {
-    FT_INTERP,
-    FT_NATIVE,
+    FT_INTERP   = 0,
+    FT_NATIVE   = 1,
 } FunctionType;
 
 typedef struct {
     FunctionType    type;
     bool            isImmediate;
     uint32_t        nameOffset;
+    uint32_t        inVS;           // numner of input values to pop from the value stack
+    uint32_t        outVS;          // number of output values to push to the value stack
     union {
         InterpFunction  interp;
         NativeFunction  native;
@@ -87,6 +89,7 @@ typedef struct {
 
 typedef struct {
     bool            bf;         // boolean flag
+
     bool            vsOF;       // value stack overflow flag
     bool            vsUF;       // value stack underflow flag
     bool            rsOF;       // return stack overflow flag
@@ -149,6 +152,8 @@ typedef struct {
     const char*     name;
     bool            isImmediate;
     NativeFunction  native;
+    uint32_t        inCount;
+    uint32_t        outCount;
 } NativeFunctionEntry;
 
 
