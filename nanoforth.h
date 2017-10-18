@@ -230,8 +230,8 @@ vmPopCompilerInstruction(VM* vm) {
     --vm->cisCount;
 }
 
-void    vmPushString(VM* vm, const char* str);
-void    vmPopString(VM* vm);
+void        vmPushString(VM* vm, const char* str);
+void        vmPopString(VM* vm);
 
 //
 // start looking for the function from the last added entry
@@ -247,5 +247,26 @@ void        vmRegisterStdWords(VM* vm);
 void        vmNext(VM* vm);
 
 void        vmReadEvalPrintLoop(VM* vm);
+
+typedef struct {
+    uint32_t    maxFunctionCount;       // max function count
+    uint32_t    maxInstructionCount;    // max instruction count
+    uint32_t    maxCharSegmentSize;     // max const char segment size
+
+    uint32_t    maxValuesCount;         // maximum value count (value stack)
+    uint32_t    maxReturnCount;         // maximum return count (return stack)
+    uint32_t    maxFileCount;           // maximum file count (file stack)
+    uint32_t    maxSSCharCount;         // maximum stacked char count (char stack for string stack)
+    uint32_t    maxSSStringCount;       // maximum stacked string count (string stack)
+
+    // compiler section
+    uint32_t    maxCFCount;             // maximum compiler function count
+    uint32_t    maxCISCount;            // maximum compiler instruction count
+} VMParameters;
+
+VM*         vmNew(const VMParameters* params);
+void        vmRelease(VM* vm);
+
+
 
 

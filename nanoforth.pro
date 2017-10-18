@@ -11,7 +11,8 @@ TEMPLATE = app
 
 SOURCES += \
     main.c \
-    std-words.c
+    std-words.c \
+    vm.c
 
 DISTFILES += \
     LICENSE

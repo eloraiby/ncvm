@@ -178,6 +178,13 @@ vmDup(VM* vm) {
 
 static
 void
+vmPeek(VM* vm) {
+    uint32_t    addr   = vmPopValue(vm);
+    vmPushValue(vm, vm->vs[vm->vsCount - addr - 1]);
+}
+
+static
+void
 vmAddUInt(VM* vm) {
     uint32_t    b   = vmPopValue(vm);
     uint32_t    a   = vmPopValue(vm);
@@ -294,6 +301,12 @@ vmUIntLT(VM* vm) {
     uint32_t    a   = vmPopValue(vm);
 
     vm->flags.bf    = (a < b);
+}
+
+static
+void
+vmBoolFlagValue(VM* vm) {
+    vmPushValue(vm, vm->flags.bf);
 }
 
 static
@@ -416,6 +429,7 @@ const NativeFunctionEntry entries[]  = {
     { "see",        false,  vmSee,                      1,      0   },
 
     { "dup",        false,  vmDup,                      1,      2   },
+    { "@>",         false,  vmPeek,                     1,      1   },
     { "+",          false,  vmAddUInt,                  2,      1   },
     { "-",          false,  vmSubUInt,                  2,      1   },
     { "*",          false,  vmMulUInt,                  2,      1   },
@@ -428,6 +442,8 @@ const NativeFunctionEntry entries[]  = {
     { "<=",         false,  vmUIntLEq,                  2,      0   },
     { ">",          false,  vmUIntGT,                   2,      0   },
     { "<",          false,  vmUIntLT,                   2,      0   },
+
+    { "bf>",        false,  vmBoolFlagValue,            0,      1   },
 
     { "?",          false,  vmCond,                     2,      0   },
 
