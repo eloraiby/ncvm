@@ -19,7 +19,7 @@
 
 int
 main(int argc, char* argv[]) {
-    printf("nanoforth 2017(c) Wael El Oraiby.\n");
+    fprintf(stdout, "nanoforth 2017(c) Wael El Oraiby.\n");
 
     VMParameters    params = {
         .maxFunctionCount       = 4096,     // max function count
