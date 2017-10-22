@@ -30,7 +30,7 @@
 #endif
 
 #ifdef __GNUC__
-#   define INLINE static __attribute__((always_inline)) inline
+#   define INLINE static __attribute__((always_inline, unused)) inline
 #else
 #   define INLINE static inline
 #endif
@@ -77,6 +77,23 @@ typedef struct {
     uint32_t        fp;     // function pointer
     uint32_t        ip;     // next instruction address
 } Return;
+
+typedef enum {
+    ST_FILE,
+    ST_MEM,
+} STREAM_TYPE;
+
+typedef struct {
+    STREAM_TYPE     ty;
+    uint32_t        refCount;   // should be incremented/decremented atomically
+    union {
+        FILE*       file;
+        struct {
+            const char* address;
+            uint32_t    size;
+        } memory;
+    } stream;
+} Stream;
 
 typedef struct {
     uint32_t        charCount;
@@ -156,7 +173,6 @@ typedef struct {
     uint32_t        outCount;
 } NativeFunctionEntry;
 
-
 INLINE
 void
 vmPushValue(VM* vm, uint32_t v) {
@@ -229,6 +245,72 @@ vmPopCompilerInstruction(VM* vm) {
     assert(vm->cisCount > 0);
     --vm->cisCount;
 }
+
+//
+// Some day, these will be the ISA for a soft-fpga microcontroller
+//
+//typedef enum {
+//    ARITH           = 0x00,
+//    LOGIC           = 0x01,
+//    COMP            = 0x02,
+//    CONTROL         = 0x03,
+//    LOAD_STORE      = 0x04,
+//
+// } OP_TYPE;
+//
+//typedef enum {
+//    NFOP_NOP        = 0x00,
+//    NFOP_ADD_U      ,
+//    NFOP_SUB_U      ,
+//    NFOP_MUL_U      ,
+//    NFOP_DIV_U      ,
+//    NFOP_MOD_U      ,
+//    NFOP_SHL_U      ,
+//    NFOP_SHR_U      ,
+//    NFOP_ROL_U      ,
+//    NFOP_ROR_U      ,
+//    NFOP_EQ_U       ,
+//    NFOP_NEQ_U      ,
+//    NFOP_GT_U       ,
+//    NFOP_LT_U       ,
+//    NFOP_GEQ_U      ,
+//    NFOP_LEQ_U      ,
+//    NFOP_AND        ,
+//    NFOP_OR         ,
+//    NFOP_INV        ,
+//    NFOP_XOR        ,
+//    NFOP_CALL_IND   ,
+//    NFOP_READ_MEM   ,
+//    NFOP_WRITE_MEM  ,
+//    NFOP_READ_VS    ,
+//    NFOP_WRITE_VS   ,
+//    NFOP_READ_RS    ,
+//    NFOP_WRITE_RS   ,
+//    NFOP_VSC        ,
+//    NFOP_RSC        ,
+//    NFOP_READ_BF    ,
+//    NFOP_WRITE_BF   ,
+//    NFOP_READ_CF    ,
+//    NFOP_WRITE_CF   ,
+
+//    NFOP_ADD_S      ,
+//    NFOP_SUB_S      ,
+//    NFOP_MUL_S      ,
+//    NFOP_DIV_S      ,
+//    NFOP_MOD_S      ,
+//    NFOP_SHL_S      ,
+//    NFOP_SHR_S      ,
+//    NFOP_ROL_S      ,
+//    NFOP_ROR_S      ,
+//    NFOP_EQ_S       ,
+//    NFOP_NEQ_S      ,
+//    NFOP_GT_S       ,
+//    NFOP_LT_S       ,
+//    NFOP_GEQ_S      ,
+//    NFOP_LEQ_S      ,
+
+//    NFOP_MAX        ,
+//} NF_OPCODE;
 
 void        vmPushString(VM* vm, const char* str);
 void        vmPopString(VM* vm);
