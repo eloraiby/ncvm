@@ -179,32 +179,32 @@ vmNew(const VMParameters* params)
     vm->rsCap   = params->maxReturnCount;
     vm->strmCap = params->maxFileCount;
 
-    vm->funcs   = (Function*)calloc(params->maxFunctionCount, sizeof(Function));
-    vm->ins     = (uint32_t*)calloc(params->maxInstructionCount, sizeof(uint32_t));
-    vm->chars   = (char*)calloc(params->maxCharSegmentSize, 1);
-    vm->vs      = (uint32_t*)calloc(params->maxValuesCount, sizeof(uint32_t));
-    vm->rs      = (Return*)calloc(params->maxReturnCount, sizeof(Return));
-    vm->strms   = (Stream**)calloc(params->maxFileCount, sizeof(Stream*));
+    vm->funcs   = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
+    vm->ins     = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
+    vm->chars   = (char*)       calloc(params->maxCharSegmentSize,  1);
+    vm->vs      = (uint32_t*)   calloc(params->maxValuesCount,      sizeof(uint32_t));
+    vm->rs      = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
+    vm->strms   = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
 
     Stream*     errS    = vmStreamFromFile(vm, stderr, SM_WO);
     Stream*     outS    = vmStreamFromFile(vm, stdout, SM_WO);
-    Stream*     inS     = vmStreamFromFile(vm, stdin, SM_RO);
+    Stream*     inS     = vmStreamFromFile(vm, stdin,  SM_RO);
 
     vmStreamPush(vm, errS);
     vmStreamPush(vm, outS);
     vmStreamPush(vm, inS);
 
-    vm->ss.chars    = (char*)calloc(params->maxSSCharCount, 1);
-    vm->ss.charCap  = params->maxSSCharCount;
+    vm->ss.chars        = (char*)calloc(params->maxSSCharCount, 1);
+    vm->ss.charCap      = params->maxSSCharCount;
 
-    vm->ss.strings  = (uint32_t*)calloc(params->maxSSStringCount, sizeof(uint32_t));
+    vm->ss.strings      = (uint32_t*)calloc(params->maxSSStringCount, sizeof(uint32_t));
     vm->ss.stringCap    = params->maxSSStringCount;
 
-    vm->cfs     = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
-    vm->cfsCap  = params->maxCFCount;
+    vm->cfs             = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
+    vm->cfsCap          = params->maxCFCount;
 
-    vm->cis     = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
-    vm->cisCap  = params->maxCISCount;
+    vm->cis             = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
+    vm->cisCap          = params->maxCISCount;
 
     vmRegisterStdWords(vm);
     return vm;
@@ -217,8 +217,12 @@ vmRelease(VM* vm) {
     free(vm->chars);
     free(vm->vs);
     free(vm->rs);
-    // TODO: streams should all be released before proceeding with free(vm->strms)
+
+    for( uint32_t i = 0; i < vm->strmCount; ++i ) {
+        vmStreamPop(vm, vm->strms[i]);
+    }
     free(vm->strms);
+
     free(vm->ss.chars);
     free(vm->ss.strings);
     free(vm->cfs);
