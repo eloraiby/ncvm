@@ -170,8 +170,7 @@ vmNext(VM* vm) {
 VM*
 vmNew(const VMParameters* params)
 {
-    VM* vm  = (VM*)malloc(sizeof(VM));
-    memset(vm, 0, sizeof(VM));
+    VM* vm  = (VM*)calloc(1, sizeof(VM));
 
     vm->funCap  = params->maxFunctionCount;
     vm->insCap  = params->maxInstructionCount;
@@ -195,20 +194,16 @@ vmNew(const VMParameters* params)
     vmStreamPush(vm, outS);
     vmStreamPush(vm, inS);
 
-    vm->ss.chars    = (char*)malloc(params->maxSSCharCount);
-    memset(vm->ss.chars, 0, params->maxSSCharCount);
+    vm->ss.chars    = (char*)calloc(params->maxSSCharCount, 1);
     vm->ss.charCap  = params->maxSSCharCount;
 
-    vm->ss.strings  = (uint32_t*)malloc(params->maxSSStringCount * sizeof(uint32_t));
-    memset(vm->ss.strings, 0, params->maxSSStringCount * sizeof(uint32_t));
+    vm->ss.strings  = (uint32_t*)calloc(params->maxSSStringCount, sizeof(uint32_t));
     vm->ss.stringCap    = params->maxSSStringCount;
 
-    vm->cfs     = (CompiledFunctionEntry*)malloc(params->maxCFCount * sizeof(CompiledFunctionEntry));
-    memset(vm->cfs, 0, params->maxCFCount * sizeof(CompiledFunctionEntry));
+    vm->cfs     = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
     vm->cfsCap  = params->maxCFCount;
 
-    vm->cis     = (uint32_t*)malloc(params->maxCISCount * sizeof(uint32_t));
-    memset(vm->cis, 0, params->maxCISCount * sizeof(uint32_t));
+    vm->cis     = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
     vm->cisCap  = params->maxCISCount;
 
     vmRegisterStdWords(vm);
