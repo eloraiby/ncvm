@@ -178,30 +178,22 @@ vmNew(const VMParameters* params)
     vm->charCap = params->maxCharSegmentSize;
     vm->vsCap   = params->maxValuesCount;
     vm->rsCap   = params->maxReturnCount;
-    vm->fsCap   = params->maxFileCount;
+    vm->strmCap = params->maxFileCount;
 
-    vm->funcs   = (Function*)malloc(params->maxFunctionCount * sizeof(Function));
-    memset(vm->funcs, 0, params->maxFunctionCount * sizeof(Function));
+    vm->funcs   = (Function*)calloc(params->maxFunctionCount, sizeof(Function));
+    vm->ins     = (uint32_t*)calloc(params->maxInstructionCount, sizeof(uint32_t));
+    vm->chars   = (char*)calloc(params->maxCharSegmentSize, 1);
+    vm->vs      = (uint32_t*)calloc(params->maxValuesCount, sizeof(uint32_t));
+    vm->rs      = (Return*)calloc(params->maxReturnCount, sizeof(Return));
+    vm->strms   = (Stream**)calloc(params->maxFileCount, sizeof(Stream*));
 
-    vm->ins     = (uint32_t*)malloc(params->maxInstructionCount * sizeof(uint32_t));
-    memset(vm->ins, 0, params->maxInstructionCount * sizeof(uint32_t));
+    Stream*     errS    = vmStreamFromFile(vm, stderr, SM_WO);
+    Stream*     outS    = vmStreamFromFile(vm, stdout, SM_WO);
+    Stream*     inS     = vmStreamFromFile(vm, stdin, SM_RO);
 
-    vm->chars   = (char*)malloc(params->maxCharSegmentSize);
-    memset(vm->chars, 0, params->maxCharSegmentSize);
-
-    vm->vs      = (uint32_t*)malloc(params->maxValuesCount * sizeof(uint32_t));
-    memset(vm->vs, 0, params->maxValuesCount * sizeof(uint32_t));
-
-    vm->rs      = (Return*)malloc(params->maxReturnCount * sizeof(Return));
-    memset(vm->rs, 0, params->maxReturnCount * sizeof(Return));
-
-    vm->fs      = (FILE**)malloc(params->maxFileCount * sizeof(FILE*));
-    memset(vm->fs, 0, params->maxFileCount * sizeof(FILE*));
-
-    vm->fs[0]   = stderr;
-    vm->fs[1]   = stdout;
-    vm->fs[2]   = stdin;
-    vm->fsCount = 3;
+    vmStreamPush(vm, errS);
+    vmStreamPush(vm, outS);
+    vmStreamPush(vm, inS);
 
     vm->ss.chars    = (char*)malloc(params->maxSSCharCount);
     memset(vm->ss.chars, 0, params->maxSSCharCount);
@@ -230,7 +222,8 @@ vmRelease(VM* vm) {
     free(vm->chars);
     free(vm->vs);
     free(vm->rs);
-    free(vm->fs);
+    // TODO: streams should all be released before proceeding with free(vm->strms)
+    free(vm->strms);
     free(vm->ss.chars);
     free(vm->ss.strings);
     free(vm->cfs);

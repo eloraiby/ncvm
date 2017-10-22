@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
 #include <assert.h>
 
 #ifdef NDEBUG
@@ -83,13 +84,21 @@ typedef enum {
     ST_MEM,
 } STREAM_TYPE;
 
+typedef enum {
+    SM_RO,
+    SM_WO,
+    SM_RW,
+} STREAM_MODE;
+
 typedef struct {
     STREAM_TYPE     ty;
-    uint32_t        refCount;   // should be incremented/decremented atomically
+    atomic_uint     refCount;   // should be incremented/decremented atomically
+    atomic_uint     pos;        // should be incremented/decremented/assigned atomically
+    STREAM_MODE     mode;
     union {
         FILE*       file;
         struct {
-            const char* address;
+            char*       address;
             uint32_t    size;
         } memory;
     } stream;
@@ -105,15 +114,20 @@ typedef struct {
 } StringStack;
 
 typedef struct {
-    bool            bf;         // boolean flag
+    bool            bf      : 1;    // boolean flag
+    union {
+        uint32_t        all;
+        struct {
 
-    bool            vsOF;       // value stack overflow flag
-    bool            vsUF;       // value stack underflow flag
-    bool            rsOF;       // return stack overflow flag
-    bool            rsUF;       // return stack underflow flag
-    bool            fnOF;       // function count overflow flag
-    bool            insOF;      // instruction count overflow flag
-    bool            chOF;       // character segment overflow flag
+            bool            vsOF    : 1;    // value stack overflow flag
+            bool            vsUF    : 1;    // value stack underflow flag
+            bool            rsOF    : 1;    // return stack overflow flag
+            bool            rsUF    : 1;    // return stack underflow flag
+            bool            fnOF    : 1;    // function count overflow flag
+            bool            insOF   : 1;    // instruction count overflow flag
+            bool            chOF    : 1;    // character segment overflow flag
+        } indiv;
+    } exceptFlags;
 } Flags;
 
 typedef struct {
@@ -149,9 +163,9 @@ struct VM {
 
     Flags           flags;
 
-    uint32_t        fsCount;
-    uint32_t        fsCap;
-    FILE**          fs;         // file stack
+    uint32_t        strmCount;
+    uint32_t        strmCap;
+    Stream**        strms;      // stream stack
 
     StringStack     ss;         // string stack
 
@@ -164,6 +178,14 @@ struct VM {
     uint32_t        cisCap;
     uint32_t*       cis;
 };
+
+#define ABORT_ON_EXCEPTIONS()   { if( vm->flags.exceptFlags.all ) { return; } }
+#define ABORT_ON_EXCEPTIONS_V(V)   { if( vm->flags.exceptFlags.all ) { return V; } }
+
+#define STOP_IF(FLAG, COND)     { \
+        ABORT_ON_EXCEPTIONS() \
+        if( (vm->flags.exceptFlags.indiv.FLAG = COND) ) { return; } } \
+    }
 
 typedef struct {
     const char*     name;
@@ -280,8 +302,10 @@ vmPopCompilerInstruction(VM* vm) {
 //    NFOP_INV        ,
 //    NFOP_XOR        ,
 //    NFOP_CALL_IND   ,
+//    NFOP_COND       ,
 //    NFOP_READ_MEM   ,
 //    NFOP_WRITE_MEM  ,
+//    NFOP_DUP_VS     ,
 //    NFOP_READ_VS    ,
 //    NFOP_WRITE_VS   ,
 //    NFOP_READ_RS    ,
@@ -314,6 +338,19 @@ vmPopCompilerInstruction(VM* vm) {
 
 void        vmPushString(VM* vm, const char* str);
 void        vmPopString(VM* vm);
+
+Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
+Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);
+Stream*     vmStreamMemory  (VM* vm, uint32_t maxSize);
+void        vmStreamPush    (VM* vm, Stream* strm);
+void        vmStreamPop     (VM* vm, Stream* strm);
+uint32_t    vmStreamReadChar(VM* vm, Stream* strm);
+uint32_t    vmStreamPeekChar(VM* vm, Stream* strm);
+void        vmStreamIsEOS   (VM* vm, Stream* strm);
+void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
+uint32_t    vmStreamSize    (VM* vm, Stream* strm);
+uint32_t    vmStreamPos     (VM* vm, Stream* strm);
+void        vmStreamSetPos  (VM* vm, Stream* strm);
 
 //
 // start looking for the function from the last added entry

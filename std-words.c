@@ -39,8 +39,14 @@ isInt(const char* buff) {
 INLINE
 int
 readChar(VM* vm) {
-    assert(vm->fsCount > 0);
-    return fgetc(vm->fs[vm->fsCount - 1]);
+    assert(vm->strmCount > 0);
+    Stream* strm    = vm->strms[vm->strmCount - 1];
+    switch(strm->ty) {
+    case ST_FILE:
+        return fgetc(strm->stream.file);
+    default:
+        return strm->stream.memory.address[strm->pos++];
+    }
 }
 
 static
