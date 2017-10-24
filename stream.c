@@ -21,16 +21,14 @@
 Stream*
 vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode) {
     ABORT_ON_EXCEPTIONS_V(NULL)
-    const char* m   = mode == SM_RO ? "rb" : (mode == SM_RW ? "rw" : (mode == SM_WO ? "wb" : "rb"));
+    const char* m   = mode == SM_RO ? "rb" : (mode == SM_RW ? "w+" : (mode == SM_WO ? "wb" : "rb"));
 
     FILE*   f   = fopen(name, m);
     if(f) {
         Stream* strm    = (Stream*)calloc(1, sizeof(Stream));
         atomic_store(&strm->refCount,   0);
-        atomic_store(&strm->pos,        0);
         strm->mode      = mode;
-        strm->ty        = ST_FILE;
-        strm->stream.file   = f;
+        strm->file      = f;
         return strm;
     } else {
         return NULL;
@@ -43,10 +41,8 @@ vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode) {
     if(f) {
         Stream* strm    = (Stream*)calloc(1, sizeof(Stream));
         atomic_store(&strm->refCount,   0);
-        atomic_store(&strm->pos,        0);
         strm->mode      = mode;
-        strm->ty        = ST_FILE;
-        strm->stream.file   = f;
+        strm->file      = f;
         return strm;
     } else {
         return NULL;
@@ -54,17 +50,20 @@ vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode) {
 }
 
 Stream*
-vmStreamMemory(VM* vm, uint32_t maxSize) {
+vmStreamFromMemory(VM* vm, const char* str, uint32_t size) {
     ABORT_ON_EXCEPTIONS_V(NULL)
-    char*   m       = (char*)calloc(maxSize, 1);
-    Stream* strm    = (Stream*)calloc(1, sizeof(Stream));
-    atomic_store(&strm->refCount,   0);
-    atomic_store(&strm->pos,        0);
-    strm->mode      = SM_RW;
-    strm->ty        = ST_MEM;
-    strm->stream.memory.address = m;
-    strm->stream.memory.size    = maxSize;
-    return NULL;
+    FILE*   f   = tmpfile();
+    if(f) {
+        Stream* strm    = (Stream*)calloc(1, sizeof(Stream));
+        atomic_store(&strm->refCount,   0);
+        fwrite(str, 1, size, f);
+        rewind(f);
+        strm->mode      = SM_RW;
+        strm->file      = f;
+        return strm;
+    } else {
+        return NULL;
+    }
 }
 
 void
@@ -81,24 +80,44 @@ vmStreamPop(VM* vm, Stream* strm) {
     if( strm->refCount != 0 ) {
         atomic_fetch_sub(&strm->refCount, 1);
         if( strm->refCount == 0 ) {
-            switch(strm->ty) {
-            case ST_FILE:
-                fclose(strm->stream.file);
-                break;
-            case ST_MEM:
-                free(strm->stream.memory.address);
-                break;
-            }
+            fclose(strm->file);
         }
     }
 }
 
-uint32_t    vmStreamReadChar(VM* vm, Stream* strm);
-uint32_t    vmStreamPeekChar(VM* vm, Stream* strm);
-void        vmStreamIsEOS   (VM* vm, Stream* strm);
-void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
-uint32_t    vmStreamSize    (VM* vm, Stream* strm);
-uint32_t    vmStreamPos     (VM* vm, Stream* strm);
-void        vmStreamSetPos  (VM* vm, Stream* strm);
+uint32_t
+vmStreamReadChar(VM* vm, Stream* strm) {
+    ABORT_ON_EXCEPTIONS_V(0)
+    char ch = 0;
+    fread(&ch, 1, 1, strm->file);
+    return ch;
+}
+
+bool
+vmStreamIsEOS(VM* vm, Stream* strm) {
+    ABORT_ON_EXCEPTIONS_V(true)
+    return (bool)feof(strm->file);
+}
+
+void
+vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch) {
+    ABORT_ON_EXCEPTIONS()
+    fwrite(&ch, 1, 1, strm->file);
+}
+
+uint32_t
+vmStreamSize(VM* vm, Stream* strm) {
+
+}
+
+uint32_t
+vmStreamPos(VM* vm, Stream* strm) {
+
+}
+
+void
+vmStreamSetPos(VM* vm, Stream* strm) {
+
+}
 
 

@@ -80,28 +80,15 @@ typedef struct {
 } Return;
 
 typedef enum {
-    ST_FILE,
-    ST_MEM,
-} STREAM_TYPE;
-
-typedef enum {
     SM_RO,
     SM_WO,
     SM_RW,
 } STREAM_MODE;
 
 typedef struct {
-    STREAM_TYPE     ty;
     atomic_uint     refCount;   // should be incremented/decremented atomically
-    atomic_uint     pos;        // should be incremented/decremented/assigned atomically
     STREAM_MODE     mode;
-    union {
-        FILE*       file;
-        struct {
-            char*       address;
-            uint32_t    size;
-        } memory;
-    } stream;
+    FILE*           file;
 } Stream;
 
 typedef struct {
@@ -345,8 +332,7 @@ Stream*     vmStreamMemory  (VM* vm, uint32_t maxSize);
 void        vmStreamPush    (VM* vm, Stream* strm);
 void        vmStreamPop     (VM* vm, Stream* strm);
 uint32_t    vmStreamReadChar(VM* vm, Stream* strm);
-uint32_t    vmStreamPeekChar(VM* vm, Stream* strm);
-void        vmStreamIsEOS   (VM* vm, Stream* strm);
+bool        vmStreamIsEOS(VM* vm, Stream* strm);
 void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
 uint32_t    vmStreamSize    (VM* vm, Stream* strm);
 uint32_t    vmStreamPos     (VM* vm, Stream* strm);
