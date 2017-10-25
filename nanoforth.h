@@ -336,7 +336,7 @@ bool        vmStreamIsEOS(VM* vm, Stream* strm);
 void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
 uint32_t    vmStreamSize    (VM* vm, Stream* strm);
 uint32_t    vmStreamPos     (VM* vm, Stream* strm);
-void        vmStreamSetPos  (VM* vm, Stream* strm);
+void        vmStreamSetPos  (VM* vm, Stream* strm, uint32_t pos);
 
 //
 // start looking for the function from the last added entry

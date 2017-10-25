@@ -21,7 +21,7 @@
 Stream*
 vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode) {
     ABORT_ON_EXCEPTIONS_V(NULL)
-    const char* m   = mode == SM_RO ? "rb" : (mode == SM_RW ? "w+" : (mode == SM_WO ? "wb" : "rb"));
+    const char* m   = mode == SM_RO ? "rb" : (mode == SM_RW ? "wb+" : (mode == SM_WO ? "wb" : "rb"));
 
     FILE*   f   = fopen(name, m);
     if(f) {
@@ -107,17 +107,24 @@ vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch) {
 
 uint32_t
 vmStreamSize(VM* vm, Stream* strm) {
-
+    ABORT_ON_EXCEPTIONS_V(0)
+    int pos = ftell(strm->file);
+    fseek(strm->file, 0, SEEK_END);
+    uint32_t    len = (uint32_t)ftell(strm->file);
+    fseek(strm->file, pos, SEEK_SET);
+    return len;
 }
 
 uint32_t
 vmStreamPos(VM* vm, Stream* strm) {
-
+    ABORT_ON_EXCEPTIONS_V(0)
+    return (uint32_t)ftell(strm->file);
 }
 
 void
-vmStreamSetPos(VM* vm, Stream* strm) {
-
+vmStreamSetPos(VM* vm, Stream* strm, uint32_t pos) {
+    ABORT_ON_EXCEPTIONS()
+    fseek(strm->file, (int)pos, SEEK_SET);
 }
 
 
