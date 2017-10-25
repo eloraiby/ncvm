@@ -147,6 +147,7 @@ struct VM {
 
     uint32_t        fp;         // current executing function
     uint32_t        ip;         // pointer to the next instruction to fetch
+    uint32_t        lp;         // local stack pointer
 
     Flags           flags;
 
@@ -332,7 +333,7 @@ Stream*     vmStreamMemory  (VM* vm, uint32_t maxSize);
 void        vmStreamPush    (VM* vm, Stream* strm);
 void        vmStreamPop     (VM* vm, Stream* strm);
 uint32_t    vmStreamReadChar(VM* vm, Stream* strm);
-bool        vmStreamIsEOS(VM* vm, Stream* strm);
+bool        vmStreamIsEOS   (VM* vm, Stream* strm);
 void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
 uint32_t    vmStreamSize    (VM* vm, Stream* strm);
 uint32_t    vmStreamPos     (VM* vm, Stream* strm);
@@ -346,6 +347,13 @@ void        vmStreamSetPos  (VM* vm, Stream* strm, uint32_t pos);
 uint32_t    vmFindFunction(VM* vm, const char* str);
 uint32_t    vmAllocateInterpFunction(VM* vm, const char* str);
 uint32_t    vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native);
+
+typedef enum {
+    CS_NO_ERROR,
+    CS_ERROR,
+} COMPILATION_STATE;
+
+COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
 void        vmRegisterStdWords(VM* vm);
 
