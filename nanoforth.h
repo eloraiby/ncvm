@@ -77,6 +77,7 @@ typedef struct {
 typedef struct {
     uint32_t        fp;     // function pointer
     uint32_t        ip;     // next instruction address
+    uint32_t        lp;     // last local value stack address
 } Return;
 
 typedef enum {
@@ -145,6 +146,10 @@ struct VM {
     uint32_t        rsCap;
     Return*         rs;         // return stack
 
+    uint32_t        lsCount;
+    uint32_t        lsCap;
+    uint32_t*       ls;         // local stack
+
     uint32_t        fp;         // current executing function
     uint32_t        ip;         // pointer to the next instruction to fetch
     uint32_t        lp;         // local stack pointer
@@ -201,8 +206,23 @@ vmPopValue(VM* vm) {
 
 INLINE
 void
+vmPushLocal(VM* vm, uint32_t v) {
+    assert(vm->lsCount < vm->lsCap);
+    vm->vs[vm->lsCount] = v;
+    ++vm->lsCount;
+}
+
+INLINE
+uint32_t
+vmGetLocalValue(VM* vm, uint32_t lidx) {
+    assert(lidx < vm->lsCount);
+    return vm->ls[vm->lp + lidx];
+}
+
+INLINE
+void
 vmPushReturn(VM* vm) {
-    Return r = { .fp = vm->fp, .ip = vm->ip };
+    Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
     vm->rs[vm->rsCount] = r;
     ++vm->rsCount;
 }
@@ -214,6 +234,7 @@ vmPopReturn(VM* vm) {
     Return  r   = vm->rs[vm->rsCount];
     vm->fp  = r.fp;
     vm->ip  = r.ip;
+    vm->lp  = r.lp;
 }
 
 INLINE
