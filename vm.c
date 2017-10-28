@@ -102,6 +102,37 @@ vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction na
 }
 
 void
+vmExecute(VM* vm, uint32_t opcode, bool isTail) {
+    uint32_t    operation   = vmGetOperation(opcode);
+    uint32_t    operand     = vmGetOperand(opcode);
+    const char* fName   = &vm->chars[vm->funcs[operand].nameOffset];
+
+    if( operation == OP_VALUE ) {
+        log("\t[%d] %u\n", vm->vsCount, operand);
+        vmPushValue(vm, operand);
+    } else { // OP_CALL
+        bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
+
+        if( isNative ) {
+            log("\t[%d] <%s>\n", vm->vsCount, fName);
+            vm->funcs[operand].u.native(vm);
+        } else {
+            if( !isTail ) {
+                log("\t[%d] call ", vm->vsCount);
+                vmPushReturn(vm);   // normal call: push return value
+            } else {
+                log("\t[%d] tail ", vm->vsCount);
+            }
+
+            log("[%d]\t%s ", vm->rsCount, fName);
+
+            vm->fp  = operand;
+            vm->ip  = 0;
+        }
+    }
+}
+
+void
 vmNext(VM* vm) {
     uint32_t    ip      = vm->ip;
     uint32_t    fp      = vm->fp;
@@ -126,42 +157,8 @@ vmNext(VM* vm) {
         uint32_t    opcode  = ins[ip];
         ++vm->ip;
 
-        bool        pushReturn  = false;
-
-        if( vm->ip < fpInsCount ) {
-            pushReturn  = true;
-        }
-
-        uint32_t    operation   = vmGetOperation(opcode);
-        uint32_t    operand     = vmGetOperand(opcode);
-
-        if( operation == OP_VALUE ) {
-            log("\t%u\n", operand);
-            vmPushValue(vm, operand);
-        } else { // OP_CALL
-            if( pushReturn ) {
-                log("\tcall ");
-                vmPushReturn(vm);   // normal call: push return value
-            } else {
-                log("\ttail ");
-            }
-
-            fName   = &vm->chars[vm->funcs[operand].nameOffset];
-            log("[%d]\t%s ", vm->rsCount, fName);
-
-            if(vm->funcs[operand].type == FT_NATIVE) {
-                log("<NAT>\n");
-                vm->funcs[operand].u.native(vm);
-                if( pushReturn ) {
-                    log("\tret<NAT>\n");
-                    vmPopReturn(vm);
-                }
-            } else {    // FT_INTERP
-                log("<INT>\n");
-                vm->fp  = operand;
-                vm->ip  = 0;
-            }
-        }
+        bool        isTail  = (vm->ip >= fpInsCount);
+        vmExecute(vm, opcode, isTail);
     }
 }
 
