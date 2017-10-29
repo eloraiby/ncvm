@@ -69,7 +69,7 @@ tokToInt(char* buff) {
 static inline
 bool
 isInCompileMode(VM* vm) {
-    return vm->cfsCount > 0;
+    return vm->compilerState.cfsCount > 0;
 }
 
 static
@@ -89,21 +89,21 @@ decompileOpcode(VM* vm, uint32_t opcode) {
 static
 void
 vmStartFuncCompilation(VM* vm) {
-    assert(vm->cfsCount < vm->cfsCap);
+    assert(vm->compilerState.cfsCount < vm->compilerState.cfsCap);
 
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
 
-    vm->cfs[vm->cfsCount].funcId    = vmAllocateInterpFunction(vm, token);
-    vm->cfs[vm->cfsCount].ciStart   = vm->cisCount;
+    vm->compilerState.cfs[vm->compilerState.cfsCount].funcId    = vmAllocateInterpFunction(vm, token);
+    vm->compilerState.cfs[vm->compilerState.cfsCount].ciStart   = vm->compilerState.cisCount;
 
-    ++vm->cfsCount;
+    ++vm->compilerState.cfsCount;
 }
 
 static
 void
 vmStartMacroCompilation(VM* vm) {
-    assert(vm->cfsCount < vm->cfsCap);
+    assert(vm->compilerState.cfsCount < vm->compilerState.cfsCap);
 
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
@@ -111,35 +111,35 @@ vmStartMacroCompilation(VM* vm) {
     uint32_t    funcId  = vmAllocateInterpFunction(vm, token);
     vm->funcs[funcId].isImmediate    = true;
 
-    vm->cfs[vm->cfsCount].funcId    = funcId;
-    vm->cfs[vm->cfsCount].ciStart   = vm->cisCount;
+    vm->compilerState.cfs[vm->compilerState.cfsCount].funcId    = funcId;
+    vm->compilerState.cfs[vm->compilerState.cfsCount].ciStart   = vm->compilerState.cisCount;
 
-    ++vm->cfsCount;
+    ++vm->compilerState.cfsCount;
 }
 
 
 static
 void
 vmFinishFuncCompilation(VM* vm) {
-    assert(vm->cfsCount > 0);
+    assert(vm->compilerState.cfsCount > 0);
 
-    uint32_t    funcId      = vm->cfs[vm->cfsCount - 1].funcId;
+    uint32_t    funcId      = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].funcId;
 
     log("finish %s (%d):\n", &vm->chars[vm->funcs[funcId].nameOffset], funcId);
 
     uint32_t    insCount    = 0;
     uint32_t    insOffset   = vm->insCount;
 
-    for( uint32_t ci = vm->cfs[vm->cfsCount - 1].ciStart; ci < vm->cisCount; ++ci) {
+    for( uint32_t ci = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].ciStart; ci < vm->compilerState.cisCount; ++ci) {
         ++insCount;
-        vmPushInstruction(vm, vm->cis[ci]);
-        decompileOpcode(vm, vm->cis[ci]);
+        vmPushInstruction(vm, vm->compilerState.cis[ci]);
+        decompileOpcode(vm, vm->compilerState.cis[ci]);
     }
 
-    vm->cisCount    = vm->cfs[vm->cfsCount - 1].ciStart;
+    vm->compilerState.cisCount    = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].ciStart;
     vm->funcs[funcId].u.interp.insOffset  = insOffset;
     vm->funcs[funcId].u.interp.insCount   = insCount;
-    --vm->cfsCount;
+    --vm->compilerState.cfsCount;
 }
 
 static

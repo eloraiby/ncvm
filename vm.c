@@ -102,6 +102,13 @@ vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction na
 }
 
 void
+vmSetFetch(VM* vm, uint32_t opcode) {
+    vm->fetchState.doReturn = true;
+    vm->fetchState.isTail   = false;
+    vm->fetchState.opcode   = opcode;
+}
+
+void
 vmFetch(VM* vm) {
     uint32_t    ip      = vm->ip;
     uint32_t    fp      = vm->fp;
@@ -112,21 +119,17 @@ vmFetch(VM* vm) {
     log("in %s - %d | %d :", fName, fp, ip);
 
     Function    func    = vm->funcs[fp];
-    if( func.type == FT_INTERP ) {
-        uint32_t    fpInsCount  = func.u.interp.insCount;
-        vm->fetchState.doReturn = ( ip >= fpInsCount );
+    assert( func.type == FT_INTERP );
+    uint32_t    fpInsCount  = func.u.interp.insCount;
+    vm->fetchState.doReturn = ( ip >= fpInsCount );
 
-        if( !vm->fetchState.doReturn ) {
-            uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
+    if( !vm->fetchState.doReturn ) {
+        uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
 
-            vm->fetchState.opcode   = ins[ip];
-            ++vm->ip;
-            vm->fetchState.isTail   = (vm->ip >= fpInsCount);
-        }
-    } else {
-        ++vm->ip;   // just increase the ip in case of native call
+        vm->fetchState.opcode   = ins[ip];
+        ++vm->ip;
+        vm->fetchState.isTail   = (vm->ip >= fpInsCount);
     }
-
 }
 
 void
@@ -167,7 +170,7 @@ vmExecute(VM* vm) {
         }
     }
 }
-
+/*
 void
 vmNext(VM* vm) {
     uint32_t    ip      = vm->ip;
@@ -198,7 +201,12 @@ vmNext(VM* vm) {
         vmExecute(vm);
     }
 }
-
+*/
+void
+vmNext(VM* vm) {
+    vmFetch(vm);
+    vmExecute(vm);
+}
 
 
 VM*
@@ -234,11 +242,11 @@ vmNew(const VMParameters* params)
     vm->ss.strings      = (uint32_t*)calloc(params->maxSSStringCount, sizeof(uint32_t));
     vm->ss.stringCap    = params->maxSSStringCount;
 
-    vm->cfs             = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
-    vm->cfsCap          = params->maxCFCount;
+    vm->compilerState.cfs       = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
+    vm->compilerState.cfsCap    = params->maxCFCount;
 
-    vm->cis             = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
-    vm->cisCap          = params->maxCISCount;
+    vm->compilerState.cis       = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
+    vm->compilerState.cisCap    = params->maxCISCount;
 
     vmRegisterStdWords(vm);
     return vm;
@@ -259,7 +267,7 @@ vmRelease(VM* vm) {
 
     free(vm->ss.chars);
     free(vm->ss.strings);
-    free(vm->cfs);
-    free(vm->cis);
+    free(vm->compilerState.cfs);
+    free(vm->compilerState.cis);
     free(vm);
 }

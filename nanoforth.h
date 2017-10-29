@@ -163,13 +163,15 @@ struct VM {
     StringStack     ss;         // string stack
 
     // compiler section
-    uint32_t        cfsCount;   // compiled function stack count
-    uint32_t        cfsCap;
-    CompiledFunctionEntry*  cfs;
+    struct {
+        uint32_t        cfsCount;   // compiled function stack count
+        uint32_t        cfsCap;
+        CompiledFunctionEntry*  cfs;
 
-    uint32_t        cisCount;   // compiler instruction count
-    uint32_t        cisCap;
-    uint32_t*       cis;
+        uint32_t        cisCount;   // compiler instruction count
+        uint32_t        cisCap;
+        uint32_t*       cis;
+    }               compilerState;
 
     struct {
         bool            isTail;
@@ -272,15 +274,15 @@ vmPopInstruction(VM* vm) {
 INLINE
 void
 vmPushCompilerInstruction(VM* vm, uint32_t opcode) {
-    assert(vm->cisCount < vm->cisCap);
-    vm->cis[vm->cisCount++] = opcode;
+    assert(vm->compilerState.cisCount < vm->compilerState.cisCap);
+    vm->compilerState.cis[vm->compilerState.cisCount++] = opcode;
 }
 
 INLINE
 void
 vmPopCompilerInstruction(VM* vm) {
-    assert(vm->cisCount > 0);
-    --vm->cisCount;
+    assert(vm->compilerState.cisCount > 0);
+    --vm->compilerState.cisCount;
 }
 
 //
@@ -383,6 +385,10 @@ typedef enum {
 COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
 void        vmRegisterStdWords(VM* vm);
+
+void        vmSetFetch(VM* vm, uint32_t opcode);
+void        vmFetch(VM* vm);
+void        vmExecute(VM* vm);
 
 void        vmNext(VM* vm);
 
