@@ -170,6 +170,12 @@ struct VM {
     uint32_t        cisCount;   // compiler instruction count
     uint32_t        cisCap;
     uint32_t*       cis;
+
+    struct {
+        bool            isTail;
+        uint32_t        opcode;
+        bool            doReturn;
+    }               fetchState;
 };
 
 #define ABORT_ON_EXCEPTIONS()   { if( vm->flags.exceptFlags.all ) { return; } }

@@ -102,10 +102,46 @@ vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction na
 }
 
 void
-vmExecute(VM* vm, uint32_t opcode, bool isTail) {
+vmFetch(VM* vm) {
+    uint32_t    ip      = vm->ip;
+    uint32_t    fp      = vm->fp;
+
+    assert(fp < vm->funcCount);
+
+    const char* fName   = &vm->chars[vm->funcs[fp].nameOffset];
+    log("in %s - %d | %d :", fName, fp, ip);
+
+    Function    func    = vm->funcs[fp];
+    if( func.type == FT_INTERP ) {
+        uint32_t    fpInsCount  = func.u.interp.insCount;
+        vm->fetchState.doReturn = ( ip >= fpInsCount );
+
+        if( !vm->fetchState.doReturn ) {
+            uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
+
+            vm->fetchState.opcode   = ins[ip];
+            ++vm->ip;
+            vm->fetchState.isTail   = (vm->ip >= fpInsCount);
+        }
+    } else {
+        ++vm->ip;   // just increase the ip in case of native call
+    }
+
+}
+
+void
+vmExecute(VM* vm) {
+    uint32_t    opcode      = vm->fetchState.opcode;
+    bool        isTail      = vm->fetchState.isTail;
     uint32_t    operation   = vmGetOperation(opcode);
     uint32_t    operand     = vmGetOperand(opcode);
-    const char* fName   = &vm->chars[vm->funcs[operand].nameOffset];
+    const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
+
+    if( vm->fetchState.doReturn ) {
+        log("\tret - ");
+        vmPopReturn(vm);    // ip exceeds instruction count, return
+        log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
+    }
 
     if( operation == OP_VALUE ) {
         log("\t[%d] %u\n", vm->vsCount, operand);
@@ -153,12 +189,13 @@ vmNext(VM* vm) {
         vmPopReturn(vm);    // ip exceeds instruction count, return
         log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
     } else {
-        uint32_t*   ins     = &vm->ins[func.u.interp.insOffset];
-        uint32_t    opcode  = ins[ip];
-        ++vm->ip;
+        uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
 
-        bool        isTail  = (vm->ip >= fpInsCount);
-        vmExecute(vm, opcode, isTail);
+        vm->fetchState.opcode   = ins[ip];
+        ++vm->ip;
+        vm->fetchState.isTail   = (vm->ip >= fpInsCount);
+
+        vmExecute(vm);
     }
 }
 
