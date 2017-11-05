@@ -492,7 +492,7 @@ vmRelease(VM* vm) {
     free(vm->rs);
 
     for( uint32_t i = 0; i < vm->strmCount; ++i ) {
-        vmStreamPop(vm, vm->strms[i]);
+        vmStreamPop(vm);
     }
     free(vm->strms);
 

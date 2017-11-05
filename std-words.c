@@ -32,8 +32,9 @@ isDigit(char ch) {
 INLINE
 bool
 isInt(const char* buff) {
+    const char* orig = buff;
     while(isDigit(*buff)) { ++buff; }
-    return *buff == '\0';
+    return *buff == '\0' && buff != orig;
 }
 
 INLINE
@@ -49,7 +50,11 @@ int
 readToken(VM* vm, int maxSize, char* tmp) {
     char    ch = 0;
     int     l  = 0;
-    while( l < maxSize && !isSpace(ch = (char)readChar(vm))) {
+
+    assert(vm->strmCount > 0);
+    Stream* strm    = vm->strms[vm->strmCount - 1];
+
+    while( l < maxSize && !isSpace(ch = (char)readChar(vm)) && !vmStreamIsEOS(vm, strm)) {
         tmp[l++] = ch;
     }
     return ch;
@@ -88,7 +93,7 @@ decompileOpcode(VM* vm, uint32_t opcode) {
 
 static
 void
-vmStartFuncCompilation(VM* vm) {
+startFuncCompilation(VM* vm) {
     assert(vm->compilerState.cfsCount < vm->compilerState.cfsCap);
 
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
@@ -102,7 +107,7 @@ vmStartFuncCompilation(VM* vm) {
 
 static
 void
-vmStartMacroCompilation(VM* vm) {
+startMacroCompilation(VM* vm) {
     assert(vm->compilerState.cfsCount < vm->compilerState.cfsCap);
 
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
@@ -120,7 +125,7 @@ vmStartMacroCompilation(VM* vm) {
 
 static
 void
-vmFinishFuncCompilation(VM* vm) {
+finishFuncCompilation(VM* vm) {
     assert(vm->compilerState.cfsCount > 0);
 
     uint32_t    funcId      = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].funcId;
@@ -144,20 +149,25 @@ vmFinishFuncCompilation(VM* vm) {
 
 static
 void
-vmReadString(VM* vm) {
-    uint32_t    strIdx  = vm->charCount;
+readString(VM* vm) {
+    uint32_t    strStartIdx = vm->ss.charCount;
+    uint32_t    strIdx      = vm->ss.stringCount;
     int         ch      = 0;
     while( (ch = readChar(vm)) != '"' ) {
-        vm->chars[vm->charCount]    = (char)ch;
-        ++vm->charCount;
+        vm->ss.chars[vm->ss.charCount]    = (char)ch;
+        ++vm->ss.charCount;
     }
+
+    assert(vm->ss.stringCount < vm->ss.stringCap);
+    vm->ss.strings[vm->ss.stringCount]  = strStartIdx;
+    ++vm->ss.stringCount;
 
     vmPushValue(vm, strIdx);
 }
 
 static
 void
-vmWordAddress(VM* vm) {
+wordAddress(VM* vm) {
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
     uint32_t funcId = vmFindFunction(vm, token);
@@ -172,7 +182,7 @@ vmWordAddress(VM* vm) {
 
 static
 void
-vmListWords(VM* vm) {
+listWords(VM* vm) {
     for( uint32_t f = 0; f < vm->funcCount; ++f ) {
         fprintf(stdout, "%d - %s : %d : %d\n", f, &vm->chars[vm->funcs[f].nameOffset], vm->funcs[f].inVS, vm->funcs[f].outVS);
     }
@@ -188,7 +198,7 @@ listValues(VM* vm) {
 
 static
 void
-vmSee(VM* vm) {
+see(VM* vm) {
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
 
@@ -217,13 +227,13 @@ vmSee(VM* vm) {
 
 static
 void
-vmQuit(VM* vm) {
+quit(VM* vm) {
     vm->quit    = true;
 }
 
 static
 void
-vmPrintInt(VM* vm) {
+printInt(VM* vm) {
     uint32_t    v   = vmPopValue(vm);
     printf("%u", v);
 }
@@ -233,9 +243,19 @@ void
 vmReadEvalPrintLoop(VM* vm) {
     fprintf(stdout, "\n> ");
 
-    while(!vm->quit) {
+    bool isEOS  = false;
+    while(!vm->quit && !isEOS ) {
         char token[1024]  = { 0 };
+
+        assert(vm->strmCount > 0);
+        Stream* strm    = vm->strms[vm->strmCount - 1];
+
         int ch = readToken(vm, 1023, token);
+        isEOS = vmStreamIsEOS(vm, strm);
+
+        if(strlen(token) == 0) {
+            continue;
+        }
 
         uint32_t    wordId   = vmFindFunction(vm, token);
         if( wordId == 0 ) {
@@ -263,26 +283,6 @@ vmReadEvalPrintLoop(VM* vm) {
                 while(!vm->quit && vm->rsCount > origRetCount) {
                     vmNext(vm);
                 }
-                /*
-                switch( vm->funcs[wordId - 1].type ) {
-                case FT_INTERP: {
-                    uint32_t    origRetCount    = vm->rsCount;
-                    vm->fp  = 0;
-                    vm->ip  = 0;
-                    vmPushReturn(vm);
-                    log("starting with depth: %d\n", origRetCount);
-
-                    vm->fp  = wordId - 1;
-                    vm->ip  = 0;
-                    while(!vm->quit && vm->rsCount > origRetCount) {
-                        vmNext(vm);
-                    }
-                } break;
-                case FT_NATIVE:
-                    vm->funcs[wordId - 1].u.native(vm);
-                    break;
-                }
-                */
             }
         }
 
@@ -295,23 +295,37 @@ vmReadEvalPrintLoop(VM* vm) {
 #define ALL 0xFFFFFFFF  /* mostly used for immediates/macros    */
 
 static
+void
+load(VM* vm) {
+    uint32_t    strIdx  = vmPopValue(vm);
+    uint32_t    strStart= vm->ss.strings[strIdx];
+    const char* fName   = &vm->ss.chars[strStart];
+    Stream*     strm    = vmStreamOpenFile(vm, fName, SM_RO);
+
+    vmStreamPush(vm, strm);
+    vmReadEvalPrintLoop(vm);
+    vmStreamPop(vm);
+    vmPopString(vm);
+}
+
+static
 const NativeFunctionEntry entries[]  = {
     { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },
 
-    { ":",          true,   vmStartFuncCompilation,     ALL,    ALL },
-    { "!",          true,   vmStartMacroCompilation,    ALL,    ALL },
-    { ";",          true,   vmFinishFuncCompilation,    ALL,    ALL },
-    { "\"",         true,   vmReadString,               ALL,    ALL },
-    { "@",          true,   vmWordAddress,              ALL,    ALL },
+    { ":",          true,   startFuncCompilation,       ALL,    ALL },
+    { "!",          true,   startMacroCompilation,      ALL,    ALL },
+    { ";",          true,   finishFuncCompilation,      ALL,    ALL },
+    { "\"",         true,   readString,                 ALL,    ALL },
+    { "@",          true,   wordAddress,                ALL,    ALL },
 
-    { ".i",         false,  vmPrintInt,                 1,      0   },
-    { "lsw",        false,  vmListWords,                0,      0   },
+    { ".i",         false,  printInt,                   1,      0   },
+    { "lsw",        false,  listWords,                  0,      0   },
     { "lsvs",       false,  listValues,                 0,      0   },
-    { "see",        false,  vmSee,                      1,      0   },
+    { "see",        false,  see,                        1,      0   },
 
+    { "load",       false,  load,                       1,      0   },
 
-    { "quit",       false,  vmQuit,                     0,      0   },
-
+    { "quit",       false,  quit,                       0,      0   },
 };
 
 void

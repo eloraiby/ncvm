@@ -31,7 +31,7 @@
 #endif
 
 #ifdef __GNUC__
-#   define INLINE       static __attribute__((always_inline, unused, used)) inline
+#   define INLINE       static __attribute__((always_inline, unused)) inline
 #   define INLINE_USED  static __attribute__((always_inline)) inline
 #else
 #   define INLINE       static inline
@@ -215,6 +215,7 @@ INLINE
 void
 vmPushValue(VM* vm, uint32_t v) {
     assert(vm->vsCount < vm->vsCap);
+    log("--> 0x%80x\n", v);
     vm->vs[vm->vsCount] = v;
     ++vm->vsCount;
 }
@@ -223,6 +224,7 @@ INLINE
 uint32_t
 vmPopValue(VM* vm) {
     assert(vm->vsCount != 0);
+    log("<--\n");
     --vm->vsCount;
     return vm->vs[vm->vsCount];
 }
@@ -320,7 +322,7 @@ Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
 Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);
 Stream*     vmStreamMemory  (VM* vm, uint32_t maxSize);
 void        vmStreamPush    (VM* vm, Stream* strm);
-void        vmStreamPop     (VM* vm, Stream* strm);
+void        vmStreamPop     (VM* vm);
 uint32_t    vmStreamReadChar(VM* vm, Stream* strm);
 bool        vmStreamIsEOS   (VM* vm, Stream* strm);
 void        vmStreamWriteChar(VM* vm, Stream* strm, uint32_t ch);
@@ -333,9 +335,9 @@ void        vmStreamSetPos  (VM* vm, Stream* strm, uint32_t pos);
 // Return: 0        -> not found
 //         v != 0   -> function index + 1 (decrement to get the function)
 //
-uint32_t    vmFindFunction  (VM* vm, const char* str);
+uint32_t    vmFindFunction          (VM* vm, const char* str);
 uint32_t    vmAllocateInterpFunction(VM* vm, const char* str);
-uint32_t    vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native, uint32_t inVS, uint32_t outVS);
+uint32_t    vmAddNativeFunction     (VM* vm, const char* str, bool isImmediate, NativeFunction native, uint32_t inVS, uint32_t outVS);
 
 typedef enum {
     CS_NO_ERROR,
@@ -344,17 +346,17 @@ typedef enum {
 
 COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
-void        vmRegisterStdWords(VM* vm);
+void        vmRegisterStdWords  (VM* vm);
 
-void        vmSetCall(VM* vm, uint32_t word);
-void        vmSetTailCall(VM* vm, uint32_t word);
+void        vmSetCall           (VM* vm, uint32_t word);
+void        vmSetTailCall       (VM* vm, uint32_t word);
 
-void        vmFetch(VM* vm);
-void        vmExecute(VM* vm);
+void        vmFetch     (VM* vm);
+void        vmExecute   (VM* vm);
 
-void        vmNext(VM* vm);
+void        vmNext      (VM* vm);
 
-void        vmReadEvalPrintLoop(VM* vm);
+void        vmReadEvalPrintLoop (VM* vm);
 
 typedef struct {
     uint32_t    maxFunctionCount;       // max function count
@@ -372,8 +374,8 @@ typedef struct {
     uint32_t    maxCISCount;            // maximum compiler instruction count
 } VMParameters;
 
-VM*         vmNew(const VMParameters* params);
-void        vmRelease(VM* vm);
+VM*         vmNew       (const VMParameters* params);
+void        vmRelease   (VM* vm);
 
 
 

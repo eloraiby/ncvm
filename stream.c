@@ -75,20 +75,28 @@ vmStreamPush(VM* vm, Stream* strm) {
 }
 
 void
-vmStreamPop(VM* vm, Stream* strm) {
+vmStreamPop(VM* vm) {
     ABORT_ON_EXCEPTIONS()
+    Stream* strm    = vm->strms[vm->strmCount - 1];
     if( strm->refCount != 0 ) {
         atomic_fetch_sub(&strm->refCount, 1);
         if( strm->refCount == 0 ) {
             fclose(strm->file);
+            free(strm);
         }
     }
+    --vm->strmCount;
 }
 
 uint32_t
 vmStreamReadChar(VM* vm, Stream* strm) {
     ABORT_ON_EXCEPTIONS_V(0)
     char ch = 0;
+
+    if( vmStreamIsEOS(vm, strm) ) {
+        return 0;
+    }
+
     fread(&ch, 1, 1, strm->file);
     return ch;
 }
