@@ -507,7 +507,6 @@ vmRelease(VM* vm) {
 void
 vmPushValue(VM* vm, uint32_t v) {
     assert(vm->vsCount < vm->vsCap);
-    log("--> 0x%80x\n", v);
     vm->vs[vm->vsCount] = v;
     ++vm->vsCount;
 }
@@ -515,22 +514,8 @@ vmPushValue(VM* vm, uint32_t v) {
 uint32_t
 vmPopValue(VM* vm) {
     assert(vm->vsCount != 0);
-    log("<--\n");
     --vm->vsCount;
     return vm->vs[vm->vsCount];
-}
-
-void
-vmPushLocal(VM* vm, uint32_t v) {
-    assert(vm->lsCount < vm->lsCap);
-    vm->vs[vm->lsCount] = v;
-    ++vm->lsCount;
-}
-
-uint32_t
-vmGetLocalValue(VM* vm, uint32_t lidx) {
-    assert(lidx < vm->lsCount);
-    return vm->ls[vm->lp + lidx];
 }
 
 void
@@ -548,17 +533,7 @@ vmPopReturn(VM* vm) {
     vm->ip  = r.ip;
     vm->lp  = r.lp;
 }
-/*
-uint32_t
-vmGetOperation(uint32_t opcode) {
-    return opcode & OP_CALL;
-}
 
-uint32_t
-vmGetOperand(uint32_t opcode) {
-    return opcode & OP_CALL_MASK;
-}
-*/
 void
 vmPushInstruction(VM* vm, uint32_t opcode) {
     assert(vm->insCount < vm->insCap);

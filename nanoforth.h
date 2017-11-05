@@ -212,8 +212,6 @@ typedef struct {
 
 void        vmPushValue     (VM* vm, uint32_t v);
 uint32_t    vmPopValue      (VM* vm);
-void        vmPushLocal     (VM* vm, uint32_t v);
-uint32_t    vmGetLocalValue (VM* vm, uint32_t lidx);
 void        vmPushReturn    (VM* vm);
 void        vmPopReturn     (VM* vm);
 void        vmPushInstruction   (VM* vm, uint32_t opcode);

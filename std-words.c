@@ -167,6 +167,16 @@ readString(VM* vm) {
 
 static
 void
+readCommentLine(VM* vm) {
+    uint32_t    strStartIdx = vm->ss.charCount;
+    uint32_t    strIdx      = vm->ss.stringCount;
+    int         ch      = 0;
+    while( (ch = readChar(vm)) != '\n' ) {
+    }
+}
+
+static
+void
 wordAddress(VM* vm) {
     char    token[MAX_TOKEN_SIZE + 1] = { 0 };
     readToken(vm, MAX_TOKEN_SIZE, token);
@@ -321,6 +331,7 @@ const NativeFunctionEntry entries[]  = {
     { "!",          true,   startMacroCompilation,      ALL,    ALL },
     { ";",          true,   finishFuncCompilation,      ALL,    ALL },
     { "\"",         true,   readString,                 ALL,    ALL },
+    { "//",         true,   readCommentLine,            0,      0   },
     { "@",          true,   wordAddress,                ALL,    ALL },
 
     { ".i",         false,  printInt,                   1,      0   },
