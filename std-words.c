@@ -258,7 +258,7 @@ vmReadEvalPrintLoop(VM* vm) {
                 vm->ip  = 0;
                 vmPushReturn(vm);
 
-                vmSetOpcode(vm, 0x80000000 | (wordId - 1));
+                vmSetTailCall(vm, wordId - 1);
                 vmExecute(vm);
                 while(!vm->quit && vm->rsCount > origRetCount) {
                     vmNext(vm);

@@ -31,9 +31,11 @@
 #endif
 
 #ifdef __GNUC__
-#   define INLINE static __attribute__((always_inline, unused)) inline
+#   define INLINE       static __attribute__((always_inline, unused, used)) inline
+#   define INLINE_USED  static __attribute__((always_inline)) inline
 #else
-#   define INLINE static inline
+#   define INLINE       static inline
+#   define INLINE_USED  static inline
 #endif
 
 #ifndef __cplusplus
@@ -45,8 +47,9 @@ typedef uint32_t    bool;
 typedef struct VM   VM;
 
 // these are made as defines because in ISO the enum values are limited to 0x7FFFFFFF
-#define OP_VALUE    0x00000000
-#define OP_CALL     0x80000000
+#define OP_VALUE        0x00000000
+#define OP_CALL         0x80000000
+#define OP_CALL_MASK    0x7FFFFFFF
 
 #define MAX_TOKEN_SIZE  1023
 
@@ -260,13 +263,13 @@ vmPopReturn(VM* vm) {
 INLINE
 uint32_t
 vmGetOperation(uint32_t opcode) {
-    return opcode & 0x80000000;
+    return opcode & OP_CALL;
 }
 
 INLINE
 uint32_t
 vmGetOperand(uint32_t opcode) {
-    return opcode & 0x7FFFFFFF;
+    return opcode & OP_CALL_MASK;
 }
 
 INLINE
@@ -343,8 +346,8 @@ COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
 void        vmRegisterStdWords(VM* vm);
 
-void        vmSetFetch(VM* vm, uint32_t opcode);
-void        vmSetOpcode(VM* vm, uint32_t opcode);
+void        vmSetCall(VM* vm, uint32_t word);
+void        vmSetTailCall(VM* vm, uint32_t word);
 
 void        vmFetch(VM* vm);
 void        vmExecute(VM* vm);
