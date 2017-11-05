@@ -241,7 +241,11 @@ printInt(VM* vm) {
 
 void
 vmReadEvalPrintLoop(VM* vm) {
-    fprintf(stdout, "\n> ");
+    uint32_t    writeToConsole  = vmPopValue(vm);
+
+    if( writeToConsole ) {
+        fprintf(stdout, "\n> ");
+    }
 
     bool isEOS  = false;
     while(!vm->quit && !isEOS ) {
@@ -286,7 +290,7 @@ vmReadEvalPrintLoop(VM* vm) {
             }
         }
 
-        if( ch == '\n' ) {
+        if( ch == '\n' && writeToConsole ) {
             fprintf(stdout, "\n> ");
         }
     }
@@ -303,6 +307,7 @@ load(VM* vm) {
     Stream*     strm    = vmStreamOpenFile(vm, fName, SM_RO);
 
     vmStreamPush(vm, strm);
+    vmPushValue(vm, 0);
     vmReadEvalPrintLoop(vm);
     vmStreamPop(vm);
     vmPopString(vm);

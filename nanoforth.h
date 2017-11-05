@@ -31,11 +31,9 @@
 #endif
 
 #ifdef __GNUC__
-#   define INLINE       static __attribute__((always_inline, unused)) inline
-#   define INLINE_USED  static __attribute__((always_inline)) inline
+#   define INLINE       static __attribute__((always_inline)) inline
 #else
 #   define INLINE       static inline
-#   define INLINE_USED  static inline
 #endif
 
 #ifndef __cplusplus
@@ -211,96 +209,17 @@ typedef struct {
     uint32_t        outCount;
 } NativeFunctionEntry;
 
-INLINE
-void
-vmPushValue(VM* vm, uint32_t v) {
-    assert(vm->vsCount < vm->vsCap);
-    log("--> 0x%80x\n", v);
-    vm->vs[vm->vsCount] = v;
-    ++vm->vsCount;
-}
 
-INLINE
-uint32_t
-vmPopValue(VM* vm) {
-    assert(vm->vsCount != 0);
-    log("<--\n");
-    --vm->vsCount;
-    return vm->vs[vm->vsCount];
-}
-
-INLINE
-void
-vmPushLocal(VM* vm, uint32_t v) {
-    assert(vm->lsCount < vm->lsCap);
-    vm->vs[vm->lsCount] = v;
-    ++vm->lsCount;
-}
-
-INLINE
-uint32_t
-vmGetLocalValue(VM* vm, uint32_t lidx) {
-    assert(lidx < vm->lsCount);
-    return vm->ls[vm->lp + lidx];
-}
-
-INLINE
-void
-vmPushReturn(VM* vm) {
-    Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
-    vm->rs[vm->rsCount] = r;
-    ++vm->rsCount;
-}
-
-INLINE
-void
-vmPopReturn(VM* vm) {
-    --vm->rsCount;
-    Return  r   = vm->rs[vm->rsCount];
-    vm->fp  = r.fp;
-    vm->ip  = r.ip;
-    vm->lp  = r.lp;
-}
-
-INLINE
-uint32_t
-vmGetOperation(uint32_t opcode) {
-    return opcode & OP_CALL;
-}
-
-INLINE
-uint32_t
-vmGetOperand(uint32_t opcode) {
-    return opcode & OP_CALL_MASK;
-}
-
-INLINE
-void
-vmPushInstruction(VM* vm, uint32_t opcode) {
-    assert(vm->insCount < vm->insCap);
-    vm->ins[vm->insCount++] = opcode;
-}
-
-INLINE
-void
-vmPopInstruction(VM* vm) {
-    assert(vm->insCount > 0);
-    --vm->insCount;
-}
-
-INLINE
-void
-vmPushCompilerInstruction(VM* vm, uint32_t opcode) {
-    assert(vm->compilerState.cisCount < vm->compilerState.cisCap);
-    vm->compilerState.cis[vm->compilerState.cisCount++] = opcode;
-}
-
-INLINE
-void
-vmPopCompilerInstruction(VM* vm) {
-    assert(vm->compilerState.cisCount > 0);
-    --vm->compilerState.cisCount;
-}
+void        vmPushValue     (VM* vm, uint32_t v);
+uint32_t    vmPopValue      (VM* vm);
+void        vmPushLocal     (VM* vm, uint32_t v);
+uint32_t    vmGetLocalValue (VM* vm, uint32_t lidx);
+void        vmPushReturn    (VM* vm);
+void        vmPopReturn     (VM* vm);
+void        vmPushInstruction   (VM* vm, uint32_t opcode);
+void        vmPopInstruction(VM* vm);
+void        vmPushCompilerInstruction   (VM* vm, uint32_t opcode);
+void        vmPopCompilerInstruction    (VM* vm);
 
 //
 // Some day, these will be the ISA for a soft-fpga microcontroller

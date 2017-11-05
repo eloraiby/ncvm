@@ -112,7 +112,7 @@ static Opcode opcodes[OP_MAX] = {
 
 };
 
-INLINE_USED
+INLINE
 void
 pushValue(VM* vm, uint32_t v) {
     assert(vm->vsCount < vm->vsCap);
@@ -120,7 +120,7 @@ pushValue(VM* vm, uint32_t v) {
     ++vm->vsCount;
 }
 
-INLINE_USED
+INLINE
 uint32_t
 popValue(VM* vm) {
     assert(vm->vsCount != 0);
@@ -128,7 +128,7 @@ popValue(VM* vm) {
     return vm->vs[vm->vsCount];
 }
 
-INLINE_USED
+INLINE
 void
 pushLocal(VM* vm, uint32_t v) {
     assert(vm->lsCount < vm->lsCap);
@@ -136,14 +136,14 @@ pushLocal(VM* vm, uint32_t v) {
     ++vm->lsCount;
 }
 
-INLINE_USED
+INLINE
 uint32_t
 getLocalValue(VM* vm, uint32_t lidx) {
     assert(lidx < vm->lsCount);
     return vm->ls[vm->lp + lidx];
 }
 
-INLINE_USED
+INLINE
 void
 pushReturn(VM* vm) {
     Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
@@ -151,7 +151,7 @@ pushReturn(VM* vm) {
     ++vm->rsCount;
 }
 
-INLINE_USED
+INLINE
 void
 popReturn(VM* vm) {
     --vm->rsCount;
@@ -161,13 +161,13 @@ popReturn(VM* vm) {
     vm->lp  = r.lp;
 }
 
-INLINE_USED
+INLINE
 uint32_t
 getOperation(uint32_t opcode) {
     return opcode & OP_CALL;
 }
 
-INLINE_USED
+INLINE
 uint32_t
 getOperand(uint32_t opcode) {
     return opcode & OP_CALL_MASK;
@@ -502,3 +502,84 @@ vmRelease(VM* vm) {
     free(vm->compilerState.cis);
     free(vm);
 }
+
+
+void
+vmPushValue(VM* vm, uint32_t v) {
+    assert(vm->vsCount < vm->vsCap);
+    log("--> 0x%80x\n", v);
+    vm->vs[vm->vsCount] = v;
+    ++vm->vsCount;
+}
+
+uint32_t
+vmPopValue(VM* vm) {
+    assert(vm->vsCount != 0);
+    log("<--\n");
+    --vm->vsCount;
+    return vm->vs[vm->vsCount];
+}
+
+void
+vmPushLocal(VM* vm, uint32_t v) {
+    assert(vm->lsCount < vm->lsCap);
+    vm->vs[vm->lsCount] = v;
+    ++vm->lsCount;
+}
+
+uint32_t
+vmGetLocalValue(VM* vm, uint32_t lidx) {
+    assert(lidx < vm->lsCount);
+    return vm->ls[vm->lp + lidx];
+}
+
+void
+vmPushReturn(VM* vm) {
+    Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
+    vm->rs[vm->rsCount] = r;
+    ++vm->rsCount;
+}
+
+void
+vmPopReturn(VM* vm) {
+    --vm->rsCount;
+    Return  r   = vm->rs[vm->rsCount];
+    vm->fp  = r.fp;
+    vm->ip  = r.ip;
+    vm->lp  = r.lp;
+}
+/*
+uint32_t
+vmGetOperation(uint32_t opcode) {
+    return opcode & OP_CALL;
+}
+
+uint32_t
+vmGetOperand(uint32_t opcode) {
+    return opcode & OP_CALL_MASK;
+}
+*/
+void
+vmPushInstruction(VM* vm, uint32_t opcode) {
+    assert(vm->insCount < vm->insCap);
+    vm->ins[vm->insCount++] = opcode;
+}
+
+void
+vmPopInstruction(VM* vm) {
+    assert(vm->insCount > 0);
+    --vm->insCount;
+}
+
+void
+vmPushCompilerInstruction(VM* vm, uint32_t opcode) {
+    assert(vm->compilerState.cisCount < vm->compilerState.cisCap);
+    vm->compilerState.cis[vm->compilerState.cisCount++] = opcode;
+}
+
+void
+vmPopCompilerInstruction(VM* vm) {
+    assert(vm->compilerState.cisCount > 0);
+    --vm->compilerState.cisCount;
+}
+

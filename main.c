@@ -36,6 +36,7 @@ main(int argc, char* argv[]) {
 
     VM* vm = vmNew(&params);
 
+    vmPushValue(vm, 1);
     vmReadEvalPrintLoop(vm);
 
     vmRelease(vm);
