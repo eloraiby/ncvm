@@ -233,24 +233,24 @@ void
 vmSetOpcode(VM* vm, uint32_t opcode) {
     vm->fetchState.opcode   = opcode;
     vm->fetchState.doReturn = false;
-    vm->fetchState.isTail   = false;
+    vm->fetchState.isTail   = true;
     vm->fp                  = opcode & 0x7FFFFFFF;
     vm->ip                  = 0;
 }
 
 void
 vmExecute(VM* vm) {
+
+    if( vm->fetchState.doReturn ) {
+        vmPopReturn(vm);    // ip exceeds instruction count, return
+        log("ret to %d:%d | rs count: %d\n", vm->fp, vm->ip, vm->rsCount);
+        return;
+    }
+
     uint32_t    opcode      = vm->fetchState.opcode;
     bool        isTail      = vm->fetchState.isTail;
     uint32_t    operation   = vmGetOperation(opcode);
     uint32_t    operand     = vmGetOperand(opcode);
-
-    if( vm->fetchState.doReturn ) {
-        log("\tret - ");
-        vmPopReturn(vm);    // ip exceeds instruction count, return
-        log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
-        return;
-    }
 
     if( operation == OP_VALUE ) {
         log("\t[%d] %u\n", vm->vsCount, operand);
@@ -260,6 +260,8 @@ vmExecute(VM* vm) {
         uint32_t    argCount    = vm->funcs[operand].inVS;
 
         if(operand < OP_MAX) {
+            log("\tOPCODE %s\n", fName);
+
             switch( argCount ) {
             case 0:
                 break;
@@ -370,6 +372,9 @@ vmExecute(VM* vm) {
             break;
 
         case OP_COND:       // if then else (BOOL @THEN @ELSE)
+            if( !isTail ) {
+                vmPushReturn(vm);   // normal call: push return value
+            }
             if( vm->readState.s0 != 0 ) {
                 vm->fp  = vm->readState.s1;
             } else {
@@ -410,7 +415,7 @@ vmExecute(VM* vm) {
                     log("\t[%d] tail ", vm->vsCount);
                 }
 
-                log("[%d]\t%s ", vm->rsCount, fName);
+                log("[%d]\t%s\n", vm->rsCount, fName);
 
                 vm->fp  = operand;
                 vm->ip  = 0;
