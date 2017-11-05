@@ -13,7 +13,8 @@ SOURCES += \
     main.c \
     std-words.c \
     vm.c \
-    stream.c
+    stream.c \
+    forth-lang.c
 
 DISTFILES += \
     LICENSE

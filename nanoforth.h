@@ -101,22 +101,18 @@ typedef struct {
     uint32_t*       strings;
 } StringStack;
 
-typedef struct {
-    bool            bf      : 1;    // boolean flag
-    union {
-        uint32_t        all;
-        struct {
-
-            bool            vsOF    : 1;    // value stack overflow flag
-            bool            vsUF    : 1;    // value stack underflow flag
-            bool            rsOF    : 1;    // return stack overflow flag
-            bool            rsUF    : 1;    // return stack underflow flag
-            bool            fnOF    : 1;    // function count overflow flag
-            bool            insOF   : 1;    // instruction count overflow flag
-            bool            chOF    : 1;    // character segment overflow flag
-        } indiv;
-    } exceptFlags;
-} Flags;
+typedef union {
+    uint32_t        all;
+    struct {
+        bool            vsOF    : 1;    // value stack overflow flag
+        bool            vsUF    : 1;    // value stack underflow flag
+        bool            rsOF    : 1;    // return stack overflow flag
+        bool            rsUF    : 1;    // return stack underflow flag
+        bool            fnOF    : 1;    // function count overflow flag
+        bool            insOF   : 1;    // instruction count overflow flag
+        bool            chOF    : 1;    // character segment overflow flag
+    } indiv;
+} ExceptFlags;
 
 typedef struct {
     uint32_t        funcId;     // function index
@@ -154,7 +150,7 @@ struct VM {
     uint32_t        ip;         // pointer to the next instruction to fetch
     uint32_t        lp;         // local stack pointer
 
-    Flags           flags;
+    ExceptFlags     exceptFlags;
 
     uint32_t        strmCount;
     uint32_t        strmCap;
@@ -178,10 +174,26 @@ struct VM {
         uint32_t        opcode;
         bool            doReturn;
     }               fetchState;
+
+    struct {
+        uint32_t        operation;
+        uint32_t        operand;
+        const char*     funcName;
+        uint32_t        argCount;
+        uint32_t        retCount;
+    }               decodeState;
+
+    struct {
+
+        uint32_t        s3;         // 4th arg
+        uint32_t        s2;         // 3rd arg
+        uint32_t        s1;         // 2nd arg
+        uint32_t        s0;         // 1st arg
+    }               readState;
 };
 
-#define ABORT_ON_EXCEPTIONS()   { if( vm->flags.exceptFlags.all ) { return; } }
-#define ABORT_ON_EXCEPTIONS_V(V)   { if( vm->flags.exceptFlags.all ) { return V; } }
+#define ABORT_ON_EXCEPTIONS()       { if( vm->exceptFlags.all ) { return; } }
+#define ABORT_ON_EXCEPTIONS_V(V)    { if( vm->exceptFlags.all ) { return V; } }
 
 #define STOP_IF(FLAG, COND)     { \
         ABORT_ON_EXCEPTIONS() \
@@ -297,64 +309,9 @@ vmPopCompilerInstruction(VM* vm) {
 //
 // } OP_TYPE;
 //
-//typedef enum {
-//    NFOP_NOP        = 0x00,
-//    NFOP_ADD_U      ,
-//    NFOP_SUB_U      ,
-//    NFOP_MUL_U      ,
-//    NFOP_DIV_U      ,
-//    NFOP_MOD_U      ,
-//    NFOP_SHL_U      ,
-//    NFOP_SHR_U      ,
-//    NFOP_ROL_U      ,
-//    NFOP_ROR_U      ,
-//    NFOP_EQ_U       ,
-//    NFOP_NEQ_U      ,
-//    NFOP_GT_U       ,
-//    NFOP_LT_U       ,
-//    NFOP_GEQ_U      ,
-//    NFOP_LEQ_U      ,
-//    NFOP_AND        ,
-//    NFOP_OR         ,
-//    NFOP_INV        ,
-//    NFOP_XOR        ,
-//    NFOP_CALL_IND   ,
-//    NFOP_COND       ,
-//    NFOP_READ_MEM   ,
-//    NFOP_WRITE_MEM  ,
-//    NFOP_DUP_VS     ,
-//    NFOP_READ_VS    ,
-//    NFOP_WRITE_VS   ,
-//    NFOP_READ_RS    ,
-//    NFOP_WRITE_RS   ,
-//    NFOP_VSC        ,
-//    NFOP_RSC        ,
-//    NFOP_READ_BF    ,
-//    NFOP_WRITE_BF   ,
-//    NFOP_READ_CF    ,
-//    NFOP_WRITE_CF   ,
 
-//    NFOP_ADD_S      ,
-//    NFOP_SUB_S      ,
-//    NFOP_MUL_S      ,
-//    NFOP_DIV_S      ,
-//    NFOP_MOD_S      ,
-//    NFOP_SHL_S      ,
-//    NFOP_SHR_S      ,
-//    NFOP_ROL_S      ,
-//    NFOP_ROR_S      ,
-//    NFOP_EQ_S       ,
-//    NFOP_NEQ_S      ,
-//    NFOP_GT_S       ,
-//    NFOP_LT_S       ,
-//    NFOP_GEQ_S      ,
-//    NFOP_LEQ_S      ,
-
-//    NFOP_MAX        ,
-//} NF_OPCODE;
-
-void        vmPushString(VM* vm, const char* str);
-void        vmPopString(VM* vm);
+void        vmPushString    (VM* vm, const char* str);
+void        vmPopString     (VM* vm);
 
 Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
 Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);
@@ -373,9 +330,9 @@ void        vmStreamSetPos  (VM* vm, Stream* strm, uint32_t pos);
 // Return: 0        -> not found
 //         v != 0   -> function index + 1 (decrement to get the function)
 //
-uint32_t    vmFindFunction(VM* vm, const char* str);
+uint32_t    vmFindFunction  (VM* vm, const char* str);
 uint32_t    vmAllocateInterpFunction(VM* vm, const char* str);
-uint32_t    vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native);
+uint32_t    vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native, uint32_t inVS, uint32_t outVS);
 
 typedef enum {
     CS_NO_ERROR,
@@ -387,6 +344,8 @@ COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 void        vmRegisterStdWords(VM* vm);
 
 void        vmSetFetch(VM* vm, uint32_t opcode);
+void        vmSetOpcode(VM* vm, uint32_t opcode);
+
 void        vmFetch(VM* vm);
 void        vmExecute(VM* vm);
 

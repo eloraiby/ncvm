@@ -17,6 +17,101 @@
 
 #include "nanoforth.h"
 
+typedef enum {
+    OP_NOP      = 0,
+
+    OP_DROP,
+    OP_DUP,
+    OP_READ_VS,
+
+    OP_U32_ADD,
+    OP_U32_SUB,
+    OP_U32_MUL,
+    OP_U32_DIV,
+    OP_U32_MOD,
+
+    OP_U32_AND,
+    OP_U32_OR,
+    OP_U32_XOR,
+    OP_U32_INV,
+
+    OP_U32_SHL,
+    OP_U32_SHR,
+
+    OP_U32_EQ,
+    OP_U32_NEQ,
+    OP_U32_GEQ,
+    OP_U32_LEQ,
+    OP_U32_GT,
+    OP_U32_LT,
+
+    OP_COND,            // if then else (BOOL @THEN @ELSE)
+
+    OP_PUSH_LOCAL,
+    OP_READ_LOCAL,
+/*
+    OP_READ_RET,
+
+    OP_VS_SIZE,         // value stack size so far
+    OP_RS_SIZE,         // return stack size so far
+    OP_LS_SIZE,         // local stack size so far
+
+    OP_CURR_FP,         // current executing function pointer (index)
+    OP_CURR_IP,         // current executing instruciton pointer (index)
+*/
+    OP_MAX,
+} OPCODE;
+
+typedef struct {
+   const char*  name;
+   uint32_t     inVs;
+   uint32_t     outVs;
+} Opcode;
+
+static Opcode opcodes[OP_MAX] = {
+    [OP_NOP    ]    = { "nop",      0,  0 },
+    [OP_DROP   ]    = { "drop",     1,  0 },
+    [OP_DUP    ]    = { "dup",      1,  1 },
+    [OP_READ_VS]    = { "@>",       1,  1 },
+
+    [OP_U32_ADD]    = { "+",        2,  1 },
+    [OP_U32_SUB]    = { "-",        2,  1 },
+    [OP_U32_MUL]    = { "*",        2,  1 },
+    [OP_U32_DIV]    = { "/",        2,  1 },
+    [OP_U32_MOD]    = { "%",        2,  1 },
+
+    [OP_U32_AND]    = { "&",        2,  1 },
+    [OP_U32_OR ]    = { "|",        2,  1 },
+    [OP_U32_XOR]    = { "^",        2,  1 },
+    [OP_U32_INV]    = { "~",        2,  1 },
+
+    [OP_U32_SHR]    = { ">>",       2,  1 },
+    [OP_U32_SHL]    = { "<<",       2,  1 },
+
+    [OP_U32_EQ ]    = { "=",        2,  1 },
+    [OP_U32_NEQ]    = { "!=",       2,  1 },
+    [OP_U32_GEQ]    = { ">=",       2,  1 },
+    [OP_U32_LEQ]    = { "<=",       2,  1 },
+    [OP_U32_GT ]    = { ">",        2,  1 },
+    [OP_U32_LT ]    = { "<",        2,  1 },
+
+    [OP_COND   ]    = { "?",        3,  0 },
+
+    [OP_PUSH_LOCAL] = { ">l",       2,  0 },
+    [OP_READ_LOCAL] = { "l>",       1,  1 },
+/*
+    OP_READ_RET,
+
+    OP_VS_SIZE,         // value stack size so far
+    OP_RS_SIZE,         // return stack size so far
+    OP_LS_SIZE,         // local stack size so far
+
+    OP_CURR_FP,         // current executing function pointer (index)
+    OP_CURR_IP,         // current executing instruciton pointer (index)
+*/
+
+};
+
 static
 uint32_t
 addConstString(VM* vm, const char* str) {
@@ -87,12 +182,14 @@ vmAllocateInterpFunction(VM* vm, const char* str) {
 }
 
 uint32_t
-vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native) {
+vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction native, uint32_t inVS, uint32_t outVS) {
     Function    f   = {
         .type           = FT_NATIVE,
         .isImmediate    = isImmediate,
         .nameOffset     = addConstString(vm, str),
-        .u              = { .native = native }
+        .u              = { .native = native },
+        .inVS           = inVS,
+        .outVS          = outVS
     };
 
     uint32_t    fidx    = vm->funcCount;
@@ -118,18 +215,27 @@ vmFetch(VM* vm) {
     const char* fName   = &vm->chars[vm->funcs[fp].nameOffset];
     log("in %s - %d | %d :", fName, fp, ip);
 
-    Function    func    = vm->funcs[fp];
-    assert( func.type == FT_INTERP );
-    uint32_t    fpInsCount  = func.u.interp.insCount;
+    Function    func        = vm->funcs[fp];
+    uint32_t    fpInsCount  = ( func.type == FT_INTERP ) ? func.u.interp.insCount : 0;
     vm->fetchState.doReturn = ( ip >= fpInsCount );
 
     if( !vm->fetchState.doReturn ) {
+        assert( func.type == FT_INTERP );
         uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
 
         vm->fetchState.opcode   = ins[ip];
         ++vm->ip;
         vm->fetchState.isTail   = (vm->ip >= fpInsCount);
     }
+}
+
+void
+vmSetOpcode(VM* vm, uint32_t opcode) {
+    vm->fetchState.opcode   = opcode;
+    vm->fetchState.doReturn = false;
+    vm->fetchState.isTail   = false;
+    vm->fp                  = opcode & 0x7FFFFFFF;
+    vm->ip                  = 0;
 }
 
 void
@@ -138,70 +244,182 @@ vmExecute(VM* vm) {
     bool        isTail      = vm->fetchState.isTail;
     uint32_t    operation   = vmGetOperation(opcode);
     uint32_t    operand     = vmGetOperand(opcode);
-    const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
 
     if( vm->fetchState.doReturn ) {
         log("\tret - ");
         vmPopReturn(vm);    // ip exceeds instruction count, return
         log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
+        return;
     }
 
     if( operation == OP_VALUE ) {
         log("\t[%d] %u\n", vm->vsCount, operand);
         vmPushValue(vm, operand);
     } else { // OP_CALL
-        bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
+        const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
+        uint32_t    argCount    = vm->funcs[operand].inVS;
 
-        if( isNative ) {
-            log("\t[%d] <%s>\n", vm->vsCount, fName);
-            vm->funcs[operand].u.native(vm);
-        } else {
-            if( !isTail ) {
-                log("\t[%d] call ", vm->vsCount);
-                vmPushReturn(vm);   // normal call: push return value
+        if(operand < OP_MAX) {
+            switch( argCount ) {
+            case 0:
+                break;
+            case 1:
+                vm->readState.s0    = vmPopValue(vm);
+                log("\tread: %d\n", vm->readState.s0);
+                break;
+            case 2:
+                vm->readState.s1    = vmPopValue(vm);
+                vm->readState.s0    = vmPopValue(vm);
+                log("\tread: %d, %d\n", vm->readState.s0, vm->readState.s1);
+                break;
+            case 3:
+                vm->readState.s2    = vmPopValue(vm);
+                vm->readState.s1    = vmPopValue(vm);
+                vm->readState.s0    = vmPopValue(vm);
+                log("\tread: %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2);
+                break;
+            default:
+                vm->readState.s3    = vmPopValue(vm);
+                vm->readState.s2    = vmPopValue(vm);
+                vm->readState.s1    = vmPopValue(vm);
+                vm->readState.s0    = vmPopValue(vm);
+                log("\tread: %d, %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2, vm->readState.s3);
+                break;
+            }
+        }
+
+        switch( operand ) {
+
+        case OP_NOP:
+            break;
+
+        case OP_DUP:
+            vmPushValue(vm, vm->readState.s0);
+            break;
+
+        case OP_READ_VS:
+            vmPushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);
+            break;
+
+        case OP_U32_ADD:
+            vmPushValue(vm, vm->readState.s0 + vm->readState.s1);
+            break;
+
+        case OP_U32_SUB:
+            vmPushValue(vm, vm->readState.s0 - vm->readState.s1);
+            break;
+
+        case OP_U32_MUL:
+            vmPushValue(vm, vm->readState.s0 * vm->readState.s1);
+            break;
+
+        case OP_U32_DIV:
+            vmPushValue(vm, vm->readState.s0 / vm->readState.s1);
+            break;
+
+        case OP_U32_MOD:
+            vmPushValue(vm, vm->readState.s0 % vm->readState.s1);
+            break;
+
+        case OP_U32_AND:
+            vmPushValue(vm, vm->readState.s0 & vm->readState.s1);
+            break;
+
+        case OP_U32_OR:
+            vmPushValue(vm, vm->readState.s0 | vm->readState.s1);
+            break;
+
+        case OP_U32_XOR:
+            vmPushValue(vm, vm->readState.s0 ^ vm->readState.s1);
+            break;
+
+        case OP_U32_INV:
+            vmPushValue(vm, ~vm->readState.s0);
+            break;
+
+        case OP_U32_SHL:
+            vmPushValue(vm, vm->readState.s0 << vm->readState.s1);
+            break;
+
+        case OP_U32_SHR:
+            vmPushValue(vm, vm->readState.s0 >> vm->readState.s1);
+            break;
+
+        case OP_U32_EQ:
+            vmPushValue(vm, vm->readState.s0 == vm->readState.s1);
+            break;
+
+        case OP_U32_NEQ:
+            vmPushValue(vm, vm->readState.s0 != vm->readState.s1);
+            break;
+
+        case OP_U32_GEQ:
+            vmPushValue(vm, vm->readState.s0 >= vm->readState.s1);
+            break;
+
+        case OP_U32_LEQ:
+            vmPushValue(vm, vm->readState.s0 <= vm->readState.s1);
+            break;
+
+        case OP_U32_GT:
+            vmPushValue(vm, vm->readState.s0 > vm->readState.s1);
+            break;
+
+        case OP_U32_LT:
+            vmPushValue(vm, vm->readState.s0 < vm->readState.s1);
+            break;
+
+        case OP_COND:       // if then else (BOOL @THEN @ELSE)
+            if( vm->readState.s0 != 0 ) {
+                vm->fp  = vm->readState.s1;
             } else {
-                log("\t[%d] tail ", vm->vsCount);
+                vm->fp  = vm->readState.s2;
             }
 
-            log("[%d]\t%s ", vm->rsCount, fName);
+            vm->ip = 0;
+            break;
 
-            vm->fp  = operand;
-            vm->ip  = 0;
+        case OP_PUSH_LOCAL:
+            vmPushLocal(vm, vm->readState.s0);
+            break;
+
+        case OP_READ_LOCAL:
+            vmGetLocalValue(vm, vm->readState.s1);
+            break;
+/*
+        OP_READ_RET,
+
+        OP_VS_SIZE,         // value stack size so far
+        OP_RS_SIZE,         // return stack size so far
+        OP_LS_SIZE,         // local stack size so far
+
+        OP_CURR_FP,         // current executing function pointer (index)
+        OP_CURR_IP,         // current executing instruciton pointer (index)
+
+*/
+        default: {
+            bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
+            if( isNative ) {
+                log("\t[%d] <%s>\n", vm->vsCount, fName);
+                vm->funcs[operand].u.native(vm);
+            } else {
+                if( !isTail ) {
+                    log("\t[%d] call ", vm->vsCount);
+                    vmPushReturn(vm);   // normal call: push return value
+                } else {
+                    log("\t[%d] tail ", vm->vsCount);
+                }
+
+                log("[%d]\t%s ", vm->rsCount, fName);
+
+                vm->fp  = operand;
+                vm->ip  = 0;
+            }
+            }
         }
     }
 }
-/*
-void
-vmNext(VM* vm) {
-    uint32_t    ip      = vm->ip;
-    uint32_t    fp      = vm->fp;
 
-    assert(fp < vm->funcCount);
-
-    const char* fName   = &vm->chars[vm->funcs[fp].nameOffset];
-    log("in %s - %d | %d :", fName, fp, ip);
-
-    Function    func    = vm->funcs[fp];
-    assert(func.type == FT_INTERP);
-
-    uint32_t    fpInsCount  = func.u.interp.insCount;
-
-    if( ip >= fpInsCount ) {
-        assert(ip == fpInsCount);
-        log("\tret - ");
-        vmPopReturn(vm);    // ip exceeds instruction count, return
-        log("%d:%d | %d\n", vm->fp, vm->ip, vm->rsCount);
-    } else {
-        uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
-
-        vm->fetchState.opcode   = ins[ip];
-        ++vm->ip;
-        vm->fetchState.isTail   = (vm->ip >= fpInsCount);
-
-        vmExecute(vm);
-    }
-}
-*/
 void
 vmNext(VM* vm) {
     vmFetch(vm);
@@ -247,6 +465,10 @@ vmNew(const VMParameters* params)
 
     vm->compilerState.cis       = (uint32_t*)calloc(params->maxCISCount, sizeof(uint32_t));
     vm->compilerState.cisCap    = params->maxCISCount;
+
+    for(uint32_t i = 0; i < sizeof(opcodes) / sizeof(Opcode); ++i) {
+        vmAddNativeFunction(vm, opcodes[i].name, false, 0, opcodes[i].inVs, opcodes[i].outVs);
+    }
 
     vmRegisterStdWords(vm);
     return vm;

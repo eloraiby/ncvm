@@ -169,155 +169,22 @@ vmWordAddress(VM* vm) {
     }
 }
 
-static
-void
-vmDup(VM* vm) {
-    uint32_t    v   = vmPopValue(vm);
-    vmPushValue(vm, v);
-    vmPushValue(vm, v);
-}
-
-static
-void
-vmPeek(VM* vm) {
-    uint32_t    addr   = vmPopValue(vm);
-    vmPushValue(vm, vm->vs[vm->vsCount - addr - 1]);
-}
-
-static
-void
-vmAddUInt(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vmPushValue(vm, a + b);
-}
-
-static
-void
-vmSubUInt(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vmPushValue(vm, a - b);
-}
-
-static
-void
-vmMulUInt(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vmPushValue(vm, a * b);
-}
-
-static
-void
-vmDivUInt(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vmPushValue(vm, a / b);
-}
-
-static
-void
-vmModUInt(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vmPushValue(vm, a % b);
-}
-
-
-static
-void
-vmCond(VM* vm) {
-    uint32_t    elseExp = vmPopValue(vm);
-    uint32_t    thenExp = vmPopValue(vm);
-
-    if( vm->flags.bf != 0 ) {
-        vm->fp  = thenExp;
-    } else {
-        vm->fp  = elseExp;
-    }
-
-    vm->ip = 0;
-    vm->flags.bf    = false;    // clear the boolean flag always after test
-}
-
-static
-void
-vmUIntEq(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a == b);
-}
-
-
-static
-void
-vmUIntNotEq(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a != b);
-}
-
-static
-void
-vmUIntGEq(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a >= b);
-}
-
-
-static
-void
-vmUIntLEq(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a <= b);
-}
-
-
-static
-void
-vmUIntGT(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a > b);
-}
-
-
-static
-void
-vmUIntLT(VM* vm) {
-    uint32_t    b   = vmPopValue(vm);
-    uint32_t    a   = vmPopValue(vm);
-
-    vm->flags.bf    = (a < b);
-}
-
-static
-void
-vmBoolFlagValue(VM* vm) {
-    vmPushValue(vm, vm->flags.bf);
-}
 
 static
 void
 vmListWords(VM* vm) {
     for( uint32_t f = 0; f < vm->funcCount; ++f ) {
-        fprintf(stdout, "%d - %s\n", f, &vm->chars[vm->funcs[f].nameOffset]);
+        fprintf(stdout, "%d - %s : %d : %d\n", f, &vm->chars[vm->funcs[f].nameOffset], vm->funcs[f].inVS, vm->funcs[f].outVS);
     }
 }
 
+static
+void
+listValues(VM* vm) {
+    for(uint32_t i = 0; i < vm->vsCount; ++i) {
+        fprintf(stdout, "[%d] - 0x%08X\n", i, vm->vs[i]);
+    }
+}
 
 static
 void
@@ -357,8 +224,8 @@ vmQuit(VM* vm) {
 static
 void
 vmPrintInt(VM* vm) {
-    uint32_t val = vmPopValue(vm);
-    printf("%u", val);
+    uint32_t    v   = vmPopValue(vm);
+    printf("%u", v);
 }
 
 
@@ -386,6 +253,17 @@ vmReadEvalPrintLoop(VM* vm) {
             if( isInCompileMode(vm) && !vm->funcs[wordId - 1].isImmediate ) {
                 vmPushCompilerInstruction(vm, 0x80000000 | (wordId - 1));
             } else {
+                uint32_t    origRetCount    = vm->rsCount;
+                vm->fp  = 0;
+                vm->ip  = 0;
+                vmPushReturn(vm);
+
+                vmSetOpcode(vm, 0x80000000 | (wordId - 1));
+                vmExecute(vm);
+                while(!vm->quit && vm->rsCount > origRetCount) {
+                    vmNext(vm);
+                }
+                /*
                 switch( vm->funcs[wordId - 1].type ) {
                 case FT_INTERP: {
                     uint32_t    origRetCount    = vm->rsCount;
@@ -404,6 +282,7 @@ vmReadEvalPrintLoop(VM* vm) {
                     vm->funcs[wordId - 1].u.native(vm);
                     break;
                 }
+                */
             }
         }
 
@@ -417,7 +296,7 @@ vmReadEvalPrintLoop(VM* vm) {
 
 static
 const NativeFunctionEntry entries[]  = {
-    { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },  // should always be @0
+    { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },
 
     { ":",          true,   vmStartFuncCompilation,     ALL,    ALL },
     { "!",          true,   vmStartMacroCompilation,    ALL,    ALL },
@@ -427,26 +306,9 @@ const NativeFunctionEntry entries[]  = {
 
     { ".i",         false,  vmPrintInt,                 1,      0   },
     { "lsw",        false,  vmListWords,                0,      0   },
+    { "lsvs",       false,  listValues,                 0,      0   },
     { "see",        false,  vmSee,                      1,      0   },
 
-    { "dup",        false,  vmDup,                      1,      2   },
-    { "@>",         false,  vmPeek,                     1,      1   },
-    { "+",          false,  vmAddUInt,                  2,      1   },
-    { "-",          false,  vmSubUInt,                  2,      1   },
-    { "*",          false,  vmMulUInt,                  2,      1   },
-    { "/",          false,  vmDivUInt,                  2,      1   },
-    { "%",          false,  vmModUInt,                  2,      1   },
-
-    { "=",          false,  vmUIntEq,                   2,      0   },
-    { "<>",         false,  vmUIntNotEq,                2,      0   },
-    { ">=",         false,  vmUIntGEq,                  2,      0   },
-    { "<=",         false,  vmUIntLEq,                  2,      0   },
-    { ">",          false,  vmUIntGT,                   2,      0   },
-    { "<",          false,  vmUIntLT,                   2,      0   },
-
-    { "bf>",        false,  vmBoolFlagValue,            0,      1   },
-
-    { "?",          false,  vmCond,                     2,      0   },
 
     { "quit",       false,  vmQuit,                     0,      0   },
 
@@ -455,7 +317,7 @@ const NativeFunctionEntry entries[]  = {
 void
 vmRegisterStdWords(VM* vm) {
     for(uint32_t i = 0; i < sizeof(entries) / sizeof(NativeFunctionEntry); ++i) {
-        vmAddNativeFunction(vm, entries[i].name, entries[i].isImmediate, entries[i].native);
+        vmAddNativeFunction(vm, entries[i].name, entries[i].isImmediate, entries[i].native, entries[i].inCount, entries[i].outCount);
     }
 }
 
