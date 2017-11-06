@@ -168,11 +168,10 @@ readString(VM* vm) {
 static
 void
 readCommentLine(VM* vm) {
-    uint32_t    strStartIdx = vm->ss.charCount;
-    uint32_t    strIdx      = vm->ss.stringCount;
     int         ch      = 0;
-    while( (ch = readChar(vm)) != '\n' ) {
-    }
+    do {
+        ch = readChar(vm);
+    } while( ch != '\n' && ch != '\a' );
 }
 
 static
@@ -245,7 +244,7 @@ static
 void
 printInt(VM* vm) {
     uint32_t    v   = vmPopValue(vm);
-    printf("%u", v);
+    fprintf(stdout, "%u", v);
 }
 
 
@@ -276,7 +275,7 @@ vmReadEvalPrintLoop(VM* vm) {
             if( isInt(token) ) { // push the value
                 uint32_t    value = tokToInt(token);
                 if( isInCompileMode(vm) ) {
-                    vmPushCompilerInstruction(vm, 0x7FFFFFFF & value);
+                    vmPushCompilerInstruction(vm, OP_CALL_MASK & value);
                 } else {
                     vmPushValue(vm, value);
                 }
@@ -285,7 +284,7 @@ vmReadEvalPrintLoop(VM* vm) {
             }
         } else {
             if( isInCompileMode(vm) && !vm->funcs[wordId - 1].isImmediate ) {
-                vmPushCompilerInstruction(vm, 0x80000000 | (wordId - 1));
+                vmPushCompilerInstruction(vm, OP_CALL | (wordId - 1));
             } else {
                 uint32_t    origRetCount    = vm->rsCount;
                 vm->fp  = 0;
@@ -324,6 +323,18 @@ load(VM* vm) {
 }
 
 static
+void
+startLambda(VM* vm) {
+
+}
+
+static
+void
+endLambda(VM* vm) {
+
+}
+
+static
 const NativeFunctionEntry entries[]  = {
     { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },
 
@@ -333,9 +344,11 @@ const NativeFunctionEntry entries[]  = {
     { "\"",         true,   readString,                 ALL,    ALL },
     { "//",         true,   readCommentLine,            0,      0   },
     { "@",          true,   wordAddress,                ALL,    ALL },
+    { "{",          true,   startLambda,                ALL,    ALL },
+    { "}",          true,   endLambda,                  ALL,    ALL },
 
     { ".i",         false,  printInt,                   1,      0   },
-    { "lsw",        false,  listWords,                  0,      0   },
+    { "lsws",       false,  listWords,                  0,      0   },
     { "lsvs",       false,  listValues,                 0,      0   },
     { "see",        false,  see,                        1,      0   },
 

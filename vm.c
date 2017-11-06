@@ -267,8 +267,9 @@ vmFetch(VM* vm) {
     assert(fp < vm->funcCount);
 
     const char* fName   = &vm->chars[vm->funcs[fp].nameOffset];
+#ifdef LOG_LEVEL_0
     log("in %s - %d | %d :", fName, fp, ip);
-
+#endif
     Function    func        = vm->funcs[fp];
     uint32_t    fpInsCount  = ( func.type == FT_INTERP ) ? func.u.interp.insCount : 0;
     vm->fetchState.doReturn = ( ip >= fpInsCount );
@@ -306,7 +307,9 @@ vmExecute(VM* vm) {
 
     if( vm->fetchState.doReturn ) {
         popReturn(vm);    // ip exceeds instruction count, return
+#ifdef LOG_LEVEL_0
         log("ret to %d:%d | rs count: %d\n", vm->fp, vm->ip, vm->rsCount);
+#endif
         return;
     }
 
@@ -316,39 +319,52 @@ vmExecute(VM* vm) {
     uint32_t    operand     = getOperand(opcode);
 
     if( operation == OP_VALUE ) {
+#ifdef LOG_LEVEL_0
         log("\t[%d] %u\n", vm->vsCount, operand);
+#endif
         pushValue(vm, operand);
     } else { // OP_CALL
+#ifdef LOG_LEVEL_0
         const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
+#endif
         uint32_t    argCount    = vm->funcs[operand].inVS;
 
         if(operand < OP_MAX) {
+#ifdef LOG_LEVEL_0
             log("\tOPCODE %s\n", fName);
-
+#endif
             switch( argCount ) {
             case 0:
                 break;
             case 1:
                 vm->readState.s0    = popValue(vm);
+#ifdef LOG_LEVEL_0
                 log("\tread: %d\n", vm->readState.s0);
+#endif
                 break;
             case 2:
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
+#ifdef LOG_LEVEL_0
                 log("\tread: %d, %d\n", vm->readState.s0, vm->readState.s1);
+#endif
                 break;
             case 3:
                 vm->readState.s2    = popValue(vm);
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
+#ifdef LOG_LEVEL_0
                 log("\tread: %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2);
+#endif
                 break;
             default:
                 vm->readState.s3    = popValue(vm);
                 vm->readState.s2    = popValue(vm);
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
+#ifdef LOG_LEVEL_0
                 log("\tread: %d, %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2, vm->readState.s3);
+#endif
                 break;
             }
         }
@@ -356,7 +372,7 @@ vmExecute(VM* vm) {
         switch( operand ) {
 
         case OP_NOP:        break;
-        case OP_DUP:        pushValue(vm, vm->readState.s0);    break;
+        case OP_DUP:        pushValue(vm, vm->readState.s0);                            break;
         case OP_READ_VS:    pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);  break;
 
         case OP_U32_ADD:    pushValue(vm, vm->readState.s0 + vm->readState.s1);         break;
@@ -409,18 +425,25 @@ vmExecute(VM* vm) {
         default: {
             bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
             if( isNative ) {
+#ifdef LOG_LEVEL_0
                 log("\t[%d] <%s>\n", vm->vsCount, fName);
+#endif
                 vm->funcs[operand].u.native(vm);
             } else {
                 if( !isTail ) {
+#ifdef LOG_LEVEL_0
                     log("\t[%d] call ", vm->vsCount);
+#endif
                     pushReturn(vm);   // normal call: push return value
                 } else {
+#ifdef LOG_LEVEL_0
                     log("\t[%d] tail ", vm->vsCount);
+#endif
                 }
 
+#ifdef LOG_LEVEL_0
                 log("[%d]\t%s\n", vm->rsCount, fName);
-
+#endif
                 vm->fp  = operand;
                 vm->ip  = 0;
             }

@@ -30,6 +30,8 @@
 #   define log(...)    fprintf(stderr, __VA_ARGS__)
 #endif
 
+//#define LOG_LEVEL_0 1
+
 #ifdef __GNUC__
 #   define INLINE       static __attribute__((always_inline)) inline
 #else
