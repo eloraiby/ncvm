@@ -325,13 +325,15 @@ load(VM* vm) {
 static
 void
 startLambda(VM* vm) {
+    assert(vm->compilerState.cfsCount < vm->compilerState.cfsCap);
 
-}
+    char    token[MAX_TOKEN_SIZE + 1] = { 0 };
+    sprintf(token, "lambda#%d", vm->insCount);
 
-static
-void
-endLambda(VM* vm) {
+    vm->compilerState.cfs[vm->compilerState.cfsCount].funcId    = vmAllocateInterpFunction(vm, token);
+    vm->compilerState.cfs[vm->compilerState.cfsCount].ciStart   = vm->compilerState.cisCount;
 
+    ++vm->compilerState.cfsCount;
 }
 
 static
@@ -344,8 +346,7 @@ const NativeFunctionEntry entries[]  = {
     { "\"",         true,   readString,                 ALL,    ALL },
     { "//",         true,   readCommentLine,            0,      0   },
     { "@",          true,   wordAddress,                ALL,    ALL },
-    { "{",          true,   startLambda,                ALL,    ALL },
-    { "}",          true,   endLambda,                  ALL,    ALL },
+    { "\\",         true,   startLambda,                ALL,    ALL },
 
     { ".i",         false,  printInt,                   1,      0   },
     { "lsws",       false,  listWords,                  0,      0   },
