@@ -337,6 +337,17 @@ startLambda(VM* vm) {
 }
 
 static
+void
+endLambda(VM* vm) {
+    finishFuncCompilation(vm);
+    if( isInCompileMode(vm) ) {
+        vmPushInstruction(vm, vm->compilerState.cfsCount);
+    } else {
+        vmPushValue(vm, vm->compilerState.cfsCount);
+    }
+}
+
+static
 const NativeFunctionEntry entries[]  = {
     { "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },
 
@@ -346,7 +357,8 @@ const NativeFunctionEntry entries[]  = {
     { "\"",         true,   readString,                 ALL,    ALL },
     { "//",         true,   readCommentLine,            0,      0   },
     { "@",          true,   wordAddress,                ALL,    ALL },
-    { "\\",         true,   startLambda,                ALL,    ALL },
+    { "{",          true,   startLambda,                ALL,    ALL },
+    { "}",          true,   endLambda,                  ALL,    ALL },
 
     { ".i",         false,  printInt,                   1,      0   },
     { "lsws",       false,  listWords,                  0,      0   },
