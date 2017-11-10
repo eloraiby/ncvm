@@ -339,11 +339,15 @@ startLambda(VM* vm) {
 static
 void
 endLambda(VM* vm) {
+    assert(vm->compilerState.cfsCount > 0);
+
+    uint32_t    funcId      = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].funcId;
+
     finishFuncCompilation(vm);
     if( isInCompileMode(vm) ) {
-        vmPushInstruction(vm, vm->compilerState.cfsCount);
+        vmPushCompilerInstruction(vm, funcId);
     } else {
-        vmPushValue(vm, vm->compilerState.cfsCount);
+        vmPushValue(vm, funcId);
     }
 }
 
