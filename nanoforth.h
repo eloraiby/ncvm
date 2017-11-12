@@ -236,6 +236,7 @@ void        vmPopCompilerInstruction    (VM* vm);
 
 void        vmPushString    (VM* vm, const char* str);
 void        vmPopString     (VM* vm);
+uint32_t    vmTopString     (VM* vm);
 
 Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
 Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);

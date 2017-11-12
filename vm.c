@@ -22,7 +22,7 @@ typedef enum {
 
     OP_DROP,
     OP_DUP,
-    OP_READ_VS,
+    OP_REV_READ_VS,     // read starting from the top of the stack
 
     OP_U32_ADD,
     OP_U32_SUB,
@@ -47,6 +47,8 @@ typedef enum {
 
     OP_COND,            // if then else (BOOL @THEN @ELSE)
 
+    OP_CALL_IND,
+
     OP_PUSH_LOCAL,
     OP_READ_LOCAL,
 /*
@@ -70,35 +72,37 @@ typedef struct {
 
 static Opcode opcodes[OP_MAX] = {
     [OP_NOP    ]    = { "nop",      0,  0 },
-    [OP_DROP   ]    = { "drop",     1,  0 },
-    [OP_DUP    ]    = { "dup",      1,  1 },
-    [OP_READ_VS]    = { "@>",       1,  1 },
+    [OP_DROP   ]    = { "vs.drop",  1,  0 },
+    [OP_DUP    ]    = { "vs.dup",   1,  1 },
+    [OP_REV_READ_VS]= { "vs.rev.read",  1,  1 },
 
-    [OP_U32_ADD]    = { "+",        2,  1 },
-    [OP_U32_SUB]    = { "-",        2,  1 },
-    [OP_U32_MUL]    = { "*",        2,  1 },
-    [OP_U32_DIV]    = { "/",        2,  1 },
-    [OP_U32_MOD]    = { "%",        2,  1 },
+    [OP_U32_ADD]    = { "u32.add",  2,  1 },
+    [OP_U32_SUB]    = { "u32.sub",  2,  1 },
+    [OP_U32_MUL]    = { "u32.mul",  2,  1 },
+    [OP_U32_DIV]    = { "u32.div",  2,  1 },
+    [OP_U32_MOD]    = { "u32.mod",  2,  1 },
 
-    [OP_U32_AND]    = { "&",        2,  1 },
-    [OP_U32_OR ]    = { "|",        2,  1 },
-    [OP_U32_XOR]    = { "^",        2,  1 },
-    [OP_U32_INV]    = { "~",        2,  1 },
+    [OP_U32_AND]    = { "u32.and",  2,  1 },
+    [OP_U32_OR ]    = { "u32.or",   2,  1 },
+    [OP_U32_XOR]    = { "u32.xor",  2,  1 },
+    [OP_U32_INV]    = { "u32.not",  2,  1 },
 
-    [OP_U32_SHR]    = { ">>",       2,  1 },
-    [OP_U32_SHL]    = { "<<",       2,  1 },
+    [OP_U32_SHR]    = { "u32.shr",  2,  1 },
+    [OP_U32_SHL]    = { "u32.shl",  2,  1 },
 
-    [OP_U32_EQ ]    = { "=",        2,  1 },
-    [OP_U32_NEQ]    = { "!=",       2,  1 },
-    [OP_U32_GEQ]    = { ">=",       2,  1 },
-    [OP_U32_LEQ]    = { "<=",       2,  1 },
-    [OP_U32_GT ]    = { ">",        2,  1 },
-    [OP_U32_LT ]    = { "<",        2,  1 },
+    [OP_U32_EQ ]    = { "u32.eq",   2,  1 },
+    [OP_U32_NEQ]    = { "u32.neq",  2,  1 },
+    [OP_U32_GEQ]    = { "u32.geq",  2,  1 },
+    [OP_U32_LEQ]    = { "u32.leq",  2,  1 },
+    [OP_U32_GT ]    = { "u32.gt",   2,  1 },
+    [OP_U32_LT ]    = { "u32.lt",   2,  1 },
 
-    [OP_COND   ]    = { "?",        3,  0 },
+    [OP_COND   ]    = { "cond",     3,  0 },
 
-    [OP_PUSH_LOCAL] = { ">l",       2,  0 },
-    [OP_READ_LOCAL] = { "l>",       1,  1 },
+    [OP_CALL_IND  ] = { "call",     1,  0 },
+
+    [OP_PUSH_LOCAL] = { "ls.push",  2,  0 },
+    [OP_READ_LOCAL] = { "ls.read",  1,  1 },
 /*
     OP_READ_RET,
 
@@ -211,6 +215,13 @@ vmPopString(VM* vm) {
     assert(vm->ss.stringCount > 0);
     vm->ss.charCount    = vm->ss.strings[vm->ss.stringCount - 1];
     --vm->ss.stringCount;
+}
+
+uint32_t
+vmTopString(VM* vm) {
+    assert(vm->ss.charCount > 0);
+    assert(vm->ss.stringCount > 0);
+    return vm->ss.stringCount - 1;
 }
 
 //
@@ -373,7 +384,7 @@ vmExecute(VM* vm) {
 
         case OP_NOP:        break;
         case OP_DUP:        pushValue(vm, vm->readState.s0);                            break;
-        case OP_READ_VS:    pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);  break;
+        case OP_REV_READ_VS:pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);  break;
 
         case OP_U32_ADD:    pushValue(vm, vm->readState.s0 + vm->readState.s1);         break;
         case OP_U32_SUB:    pushValue(vm, vm->readState.s0 - vm->readState.s1);         break;
@@ -408,6 +419,8 @@ vmExecute(VM* vm) {
 
             vm->ip = 0;
             break;
+
+        case OP_CALL_IND:   vm->fp  = vm->readState.s0; vm->ip  = 0;                    break;
 
         case OP_PUSH_LOCAL: pushLocal(vm, vm->readState.s0);                            break;
         case OP_READ_LOCAL: getLocalValue(vm, vm->readState.s1);                        break;
