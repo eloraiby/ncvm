@@ -322,6 +322,12 @@ load(VM* vm) {
     vmPopString(vm);
 }
 
+void
+vmLoad(VM* vm, const char* stream) {
+    vmPushString(vm, stream);
+    load(vm);
+}
+
 static
 void
 startLambda(VM* vm) {

@@ -52,6 +52,9 @@ typedef enum {
     OP_PUSH_LOCAL,
     OP_READ_LOCAL,
 /*
+    OP_TRY_WITH,
+    OP_EXCEPT,
+
     OP_READ_RET,
 
     OP_VS_SIZE,         // value stack size so far
@@ -101,7 +104,7 @@ static Opcode opcodes[OP_MAX] = {
 
     [OP_CALL_IND  ] = { "call",     1,  0 },
 
-    [OP_PUSH_LOCAL] = { "ls.push",  2,  0 },
+    [OP_PUSH_LOCAL] = { "ls.push",  1,  0 },
     [OP_READ_LOCAL] = { "ls.read",  1,  1 },
 /*
     OP_READ_RET,
@@ -136,14 +139,14 @@ INLINE
 void
 pushLocal(VM* vm, uint32_t v) {
     assert(vm->lsCount < vm->lsCap);
-    vm->vs[vm->lsCount] = v;
+    vm->ls[vm->lsCount] = v;
     ++vm->lsCount;
 }
 
 INLINE
 uint32_t
 getLocalValue(VM* vm, uint32_t lidx) {
-    assert(lidx < vm->lsCount);
+    assert((lidx + vm->lp) < vm->lsCount);
     return vm->ls[vm->lp + lidx];
 }
 
@@ -206,7 +209,11 @@ vmPushString(VM* vm, const char* str) {
 
     assert(vm->ss.stringCount < vm->ss.stringCap);
     vm->ss.strings[vm->ss.stringCount]  = strIdx;
+
     ++vm->ss.stringCount;
+
+    // push the string index on the value stack
+    vmPushValue(vm, strIdx);
 }
 
 void
@@ -221,7 +228,7 @@ uint32_t
 vmTopString(VM* vm) {
     assert(vm->ss.charCount > 0);
     assert(vm->ss.stringCount > 0);
-    return vm->ss.stringCount - 1;
+    return vm->ss.strings[vm->ss.stringCount - 1];
 }
 
 //
@@ -423,7 +430,7 @@ vmExecute(VM* vm) {
         case OP_CALL_IND:   vm->fp  = vm->readState.s0; vm->ip  = 0;                    break;
 
         case OP_PUSH_LOCAL: pushLocal(vm, vm->readState.s0);                            break;
-        case OP_READ_LOCAL: getLocalValue(vm, vm->readState.s1);                        break;
+        case OP_READ_LOCAL: pushValue(vm, getLocalValue(vm, vm->readState.s0));         break;
 /*
         OP_READ_RET,
 
@@ -480,6 +487,7 @@ vmNew(const VMParameters* params)
     vm->funCap  = params->maxFunctionCount;
     vm->insCap  = params->maxInstructionCount;
     vm->charCap = params->maxCharSegmentSize;
+    vm->lsCap   = params->maxLocalsCount;
     vm->vsCap   = params->maxValuesCount;
     vm->rsCap   = params->maxReturnCount;
     vm->strmCap = params->maxFileCount;
@@ -488,6 +496,7 @@ vmNew(const VMParameters* params)
     vm->ins     = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
     vm->chars   = (char*)       calloc(params->maxCharSegmentSize,  1);
     vm->vs      = (uint32_t*)   calloc(params->maxValuesCount,      sizeof(uint32_t));
+    vm->ls      = (uint32_t*)   calloc(params->maxLocalsCount,      sizeof(uint32_t));
     vm->rs      = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
     vm->strms   = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
 

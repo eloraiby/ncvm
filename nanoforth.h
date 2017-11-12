@@ -234,8 +234,13 @@ void        vmPopCompilerInstruction    (VM* vm);
 // } OP_TYPE;
 //
 
+/// pushes a string on the string stack and the string index on the value stack
 void        vmPushString    (VM* vm, const char* str);
+
+/// pop the string from the string stack (the value stack remains intact)
 void        vmPopString     (VM* vm);
+
+/// return the top string index
 uint32_t    vmTopString     (VM* vm);
 
 Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
@@ -277,6 +282,8 @@ void        vmExecute   (VM* vm);
 void        vmNext      (VM* vm);
 
 void        vmReadEvalPrintLoop (VM* vm);
+void        vmLoad      (VM* vm, const char* stream);
+
 
 typedef struct {
     uint32_t    maxFunctionCount;       // max function count
@@ -284,6 +291,7 @@ typedef struct {
     uint32_t    maxCharSegmentSize;     // max const char segment size
 
     uint32_t    maxValuesCount;         // maximum value count (value stack)
+    uint32_t    maxLocalsCount;         // maximum local count (local stack)
     uint32_t    maxReturnCount;         // maximum return count (return stack)
     uint32_t    maxFileCount;           // maximum file count (file stack)
     uint32_t    maxSSCharCount;         // maximum stacked char count (char stack for string stack)

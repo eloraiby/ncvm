@@ -14,16 +14,34 @@
 : =  u32.eq  ;
 : != u32.neq ;
 : >= u32.geq ;
-; <= u32.leq ;
+: <= u32.leq ;
 : >  u32.gt  ;
 : <  u32.lt  ;
 : ?  cond    ;
 : ## call    ;
 
+: >l ls.push ;
+: l@ ls.read ;
+
 : test+ 1 2 + .i ;
 : test* 2 3 * .i ;
 
 : test-lambda-false 0 { 11 } { 22 } ? .i ;
-: test-lambda-true 1 { 11 } { 22 } ? .i ;
+: test-lambda-true  1 { 11 } { 22 } ? .i ;
 
+: test-call-return  { 13 } ## .i ;
+: test-call-tail-intern { 13 } ## ;
+: test-call-tail    1 2 test-call-tail-intern .i .i .i ;
 
+: test-locals
+    1 >l
+    2 >l
+    3 >l
+
+    0 l@
+    1 l@
+    *
+    2 l@
+    +
+    .i
+    ;

@@ -26,6 +26,7 @@ main(int argc, char* argv[]) {
         .maxInstructionCount    = 65536,    // max instruction count
         .maxCharSegmentSize     = 65536,    // max const char segment size
         .maxValuesCount         = 1024,     // maximum value count (value stack)
+        .maxLocalsCount         = 1024,     // maximum local count (local stack)
         .maxReturnCount         = 1024,     // maximum return count (return stack)
         .maxFileCount           = 1024,     // maximum file count (file stack)
         .maxSSCharCount         = 2 * 65536,// maximum stacked char count (char stack for string stack)
@@ -35,6 +36,8 @@ main(int argc, char* argv[]) {
     };
 
     VM* vm = vmNew(&params);
+
+    vmLoad(vm, "bootstrap.4th");
 
     vmPushValue(vm, 1);
     vmReadEvalPrintLoop(vm);
