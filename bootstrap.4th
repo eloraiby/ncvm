@@ -1,5 +1,6 @@
 // bootstrap.4th
-
+: dup   vs.dup  ;
+: drop  vs.drop ;
 : +  u32.add ;
 : -  u32.sub ;
 : *  u32.mul ;
@@ -45,3 +46,17 @@
     +
     .i
     ;
+
+: test-rec
+    dup
+    dup .i
+    0 =
+    { 32123 .i }
+    { 1 -
+      @ test-rec
+      ## }
+    ?
+    ;
+
+: test-r2 100 test-rec ;
+

@@ -390,7 +390,10 @@ vmExecute(VM* vm) {
         switch( operand ) {
 
         case OP_NOP:        break;
-        case OP_DUP:        pushValue(vm, vm->readState.s0);                            break;
+        case OP_DUP:
+            pushValue(vm, vm->readState.s0);
+            pushValue(vm, vm->readState.s0);
+            break;
         case OP_REV_READ_VS:pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);  break;
 
         case OP_U32_ADD:    pushValue(vm, vm->readState.s0 + vm->readState.s1);         break;
