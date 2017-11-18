@@ -51,10 +51,8 @@ typedef enum {
 
     OP_PUSH_LOCAL,
     OP_READ_LOCAL,
-/*
-    OP_TRY_WITH,
-    OP_EXCEPT,
 
+/*
     OP_READ_RET,
 
     OP_VS_SIZE,         // value stack size so far
@@ -106,6 +104,7 @@ static Opcode opcodes[OP_MAX] = {
 
     [OP_PUSH_LOCAL] = { "ls.push",  1,  0 },
     [OP_READ_LOCAL] = { "ls.read",  1,  1 },
+
 /*
     OP_READ_RET,
 
@@ -434,6 +433,7 @@ vmExecute(VM* vm) {
 
         case OP_PUSH_LOCAL: pushLocal(vm, vm->readState.s0);                            break;
         case OP_READ_LOCAL: pushValue(vm, getLocalValue(vm, vm->readState.s0));         break;
+
 /*
         OP_READ_RET,
 
