@@ -61,14 +61,14 @@ readToken(VM* vm, int maxSize, char* tmp) {
 }
 
 static
-uint32_t
+Value
 tokToInt(char* buff) {
     uint32_t    value   = 0;
     while(*buff) {
         value   = value * 10 + (*buff - '0');
         ++buff;
     }
-    return value;
+    return (Value) { .u32 = value };
 }
 
 static inline
@@ -162,7 +162,7 @@ readString(VM* vm) {
     vm->ss.strings[vm->ss.stringCount]  = strStartIdx;
     ++vm->ss.stringCount;
 
-    vmPushValue(vm, strIdx);
+    vmPushValue(vm, (Value) { .u32 = strIdx });
 }
 
 static
@@ -184,7 +184,7 @@ wordAddress(VM* vm) {
     if( isInCompileMode(vm) ) {
         vmPushCompilerInstruction(vm, funcId - 1);
     } else {
-        vmPushValue(vm, funcId - 1);
+        vmPushValue(vm, (Value) { .u32 = funcId - 1 });
     }
 }
 
@@ -201,7 +201,7 @@ static
 void
 listValues(VM* vm) {
     for(uint32_t i = 0; i < vm->vsCount; ++i) {
-        fprintf(stdout, "[%d] - 0x%08X\n", i, vm->vs[i]);
+        fprintf(stdout, "[%d] - 0x%08X\n", i, vm->vs[i].u32);
     }
 }
 
@@ -243,16 +243,16 @@ quit(VM* vm) {
 static
 void
 printInt(VM* vm) {
-    uint32_t    v   = vmPopValue(vm);
-    fprintf(stdout, "%u", v);
+    Value   v   = vmPopValue(vm);
+    fprintf(stdout, "%u", v.u32);
 }
 
 
 void
 vmReadEvalPrintLoop(VM* vm) {
-    uint32_t    writeToConsole  = vmPopValue(vm);
+    Value   writeToConsole  = vmPopValue(vm);
 
-    if( writeToConsole ) {
+    if( writeToConsole.b ) {
         fprintf(stdout, "\n> ");
     }
 
@@ -273,9 +273,9 @@ vmReadEvalPrintLoop(VM* vm) {
         uint32_t    wordId   = vmFindFunction(vm, token);
         if( wordId == 0 ) {
             if( isInt(token) ) { // push the value
-                uint32_t    value = tokToInt(token);
+                Value    value = tokToInt(token);
                 if( isInCompileMode(vm) ) {
-                    vmPushCompilerInstruction(vm, OP_CALL_MASK & value);
+                    vmPushCompilerInstruction(vm, OP_CALL_MASK & value.u32);
                 } else {
                     vmPushValue(vm, value);
                 }
@@ -299,7 +299,7 @@ vmReadEvalPrintLoop(VM* vm) {
             }
         }
 
-        if( ch == '\n' && writeToConsole ) {
+        if( ch == '\n' && writeToConsole.b ) {
             fprintf(stdout, "\n> ");
         }
     }
@@ -310,13 +310,13 @@ vmReadEvalPrintLoop(VM* vm) {
 static
 void
 load(VM* vm) {
-    uint32_t    strIdx  = vmPopValue(vm);
-    uint32_t    strStart= vm->ss.strings[strIdx];
+    Value       strIdx  = vmPopValue(vm);
+    uint32_t    strStart= vm->ss.strings[strIdx.u32];
     const char* fName   = &vm->ss.chars[strStart];
     Stream*     strm    = vmStreamOpenFile(vm, fName, SM_RO);
 
     vmStreamPush(vm, strm);
-    vmPushValue(vm, 0);
+    vmPushValue(vm, (Value){ .u32 = 0 });
     vmReadEvalPrintLoop(vm);
     vmStreamPop(vm);
     vmPopString(vm);
@@ -347,11 +347,11 @@ void
 endLambda(VM* vm) {
     assert(vm->compilerState.cfsCount > 0);
 
-    uint32_t    funcId      = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].funcId;
+    Value       funcId      = (Value) { .u32 = vm->compilerState.cfs[vm->compilerState.cfsCount - 1].funcId };
 
     finishFuncCompilation(vm);
     if( isInCompileMode(vm) ) {
-        vmPushCompilerInstruction(vm, funcId);
+        vmPushCompilerInstruction(vm, funcId.u32);
     } else {
         vmPushValue(vm, funcId);
     }

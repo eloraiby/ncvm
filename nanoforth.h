@@ -83,6 +83,22 @@ typedef struct {
     uint32_t        lp;     // last local value stack address
 } Return;
 
+typedef union {
+    bool            b;
+    char            c;
+    uint8_t         u8;
+    uint16_t        u16;
+    uint32_t        u32;
+    uint64_t        u64;
+    int8_t          i8;
+    int16_t         i16;
+    int32_t         i32;
+    int64_t         i64;
+    float           f32;
+    double          f64;
+    void*           ref;
+} Value;
+
 typedef enum {
     SM_RO,
     SM_WO,
@@ -139,7 +155,7 @@ struct VM {
 
     uint32_t        vsCount;
     uint32_t        vsCap;
-    uint32_t*       vs;         // value stack
+    Value*          vs;         // value stack
 
     uint32_t        rsCount;
     uint32_t        rsCap;
@@ -147,7 +163,7 @@ struct VM {
 
     uint32_t        lsCount;
     uint32_t        lsCap;
-    uint32_t*       ls;         // local stack
+    Value*          ls;         // local stack
 
     uint32_t        fp;         // current executing function
     uint32_t        ip;         // pointer to the next instruction to fetch
@@ -188,10 +204,10 @@ struct VM {
 
     struct {
 
-        uint32_t        s3;         // 4th arg
-        uint32_t        s2;         // 3rd arg
-        uint32_t        s1;         // 2nd arg
-        uint32_t        s0;         // 1st arg
+        Value           s3;         // 4th arg
+        Value           s2;         // 3rd arg
+        Value           s1;         // 2nd arg
+        Value           s0;         // 1st arg
     }               readState;
 };
 
@@ -212,8 +228,8 @@ typedef struct {
 } NativeFunctionEntry;
 
 
-void        vmPushValue     (VM* vm, uint32_t v);
-uint32_t    vmPopValue      (VM* vm);
+void        vmPushValue     (VM* vm, Value v);
+Value       vmPopValue      (VM* vm);
 void        vmPushReturn    (VM* vm);
 void        vmPopReturn     (VM* vm);
 void        vmPushInstruction   (VM* vm, uint32_t opcode);

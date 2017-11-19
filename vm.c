@@ -17,6 +17,8 @@
 
 #include "nanoforth.h"
 
+#define U32V(V) (Value) { .u32 = V }
+
 typedef enum {
     OP_NOP      = 0,
 
@@ -120,14 +122,14 @@ static Opcode opcodes[OP_MAX] = {
 
 INLINE
 void
-pushValue(VM* vm, uint32_t v) {
+pushValue(VM* vm, Value v) {
     assert(vm->vsCount < vm->vsCap);
     vm->vs[vm->vsCount] = v;
     ++vm->vsCount;
 }
 
 INLINE
-uint32_t
+Value
 popValue(VM* vm) {
     assert(vm->vsCount != 0);
     --vm->vsCount;
@@ -136,14 +138,14 @@ popValue(VM* vm) {
 
 INLINE
 void
-pushLocal(VM* vm, uint32_t v) {
+pushLocal(VM* vm, Value v) {
     assert(vm->lsCount < vm->lsCap);
     vm->ls[vm->lsCount] = v;
     ++vm->lsCount;
 }
 
 INLINE
-uint32_t
+Value
 getLocalValue(VM* vm, uint32_t lidx) {
     assert((lidx + vm->lp) < vm->lsCount);
     return vm->ls[vm->lp + lidx];
@@ -212,7 +214,7 @@ vmPushString(VM* vm, const char* str) {
     ++vm->ss.stringCount;
 
     // push the string index on the value stack
-    vmPushValue(vm, strIdx);
+    vmPushValue(vm, U32V(strIdx));
 }
 
 void
@@ -339,7 +341,7 @@ vmExecute(VM* vm) {
 #ifdef LOG_LEVEL_0
         log("\t[%d] %u\n", vm->vsCount, operand);
 #endif
-        pushValue(vm, operand);
+        pushValue(vm, U32V(operand));
     } else { // OP_CALL
 #ifdef LOG_LEVEL_0
         const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
@@ -356,14 +358,14 @@ vmExecute(VM* vm) {
             case 1:
                 vm->readState.s0    = popValue(vm);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d\n", vm->readState.s0);
+                log("\tread: %d\n", vm->readState.s0.u32);
 #endif
                 break;
             case 2:
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d\n", vm->readState.s0, vm->readState.s1);
+                log("\tread: %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32);
 #endif
                 break;
             case 3:
@@ -371,7 +373,7 @@ vmExecute(VM* vm) {
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2);
+                log("\tread: %d, %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32, vm->readState.s2.u32);
 #endif
                 break;
             default:
@@ -380,7 +382,7 @@ vmExecute(VM* vm) {
                 vm->readState.s1    = popValue(vm);
                 vm->readState.s0    = popValue(vm);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d, %d, %d\n", vm->readState.s0, vm->readState.s1, vm->readState.s2, vm->readState.s3);
+                log("\tread: %d, %d, %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32, vm->readState.s2.u32, vm->readState.s3.u32);
 #endif
                 break;
             }
@@ -393,46 +395,46 @@ vmExecute(VM* vm) {
             pushValue(vm, vm->readState.s0);
             pushValue(vm, vm->readState.s0);
             break;
-        case OP_REV_READ_VS:pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0 - 1]);  break;
+        case OP_REV_READ_VS:pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0.u32 - 1]);  break;
 
-        case OP_U32_ADD:    pushValue(vm, vm->readState.s0 + vm->readState.s1);         break;
-        case OP_U32_SUB:    pushValue(vm, vm->readState.s0 - vm->readState.s1);         break;
-        case OP_U32_MUL:    pushValue(vm, vm->readState.s0 * vm->readState.s1);         break;
-        case OP_U32_DIV:    pushValue(vm, vm->readState.s0 / vm->readState.s1);         break;
-        case OP_U32_MOD:    pushValue(vm, vm->readState.s0 % vm->readState.s1);         break;
+        case OP_U32_ADD:    pushValue(vm, U32V(vm->readState.s0.u32 + vm->readState.s1.u32));   break;
+        case OP_U32_SUB:    pushValue(vm, U32V(vm->readState.s0.u32 - vm->readState.s1.u32));   break;
+        case OP_U32_MUL:    pushValue(vm, U32V(vm->readState.s0.u32 * vm->readState.s1.u32));   break;
+        case OP_U32_DIV:    pushValue(vm, U32V(vm->readState.s0.u32 / vm->readState.s1.u32));   break;
+        case OP_U32_MOD:    pushValue(vm, U32V(vm->readState.s0.u32 % vm->readState.s1.u32));   break;
 
-        case OP_U32_AND:    pushValue(vm, vm->readState.s0 & vm->readState.s1);         break;
-        case OP_U32_OR:     pushValue(vm, vm->readState.s0 | vm->readState.s1);         break;
-        case OP_U32_XOR:    pushValue(vm, vm->readState.s0 ^ vm->readState.s1);         break;
-        case OP_U32_INV:    pushValue(vm, ~vm->readState.s0);                           break;
+        case OP_U32_AND:    pushValue(vm, U32V(vm->readState.s0.u32 & vm->readState.s1.u32));   break;
+        case OP_U32_OR:     pushValue(vm, U32V(vm->readState.s0.u32 | vm->readState.s1.u32));   break;
+        case OP_U32_XOR:    pushValue(vm, U32V(vm->readState.s0.u32 ^ vm->readState.s1.u32));   break;
+        case OP_U32_INV:    pushValue(vm, U32V(~vm->readState.s0.u32));                         break;
 
-        case OP_U32_SHL:    pushValue(vm, vm->readState.s0 << vm->readState.s1);        break;
-        case OP_U32_SHR:    pushValue(vm, vm->readState.s0 >> vm->readState.s1);        break;
+        case OP_U32_SHL:    pushValue(vm, U32V(vm->readState.s0.u32 << vm->readState.s1.u32));  break;
+        case OP_U32_SHR:    pushValue(vm, U32V(vm->readState.s0.u32 >> vm->readState.s1.u32));  break;
 
-        case OP_U32_EQ:     pushValue(vm, vm->readState.s0 == vm->readState.s1);        break;
-        case OP_U32_NEQ:    pushValue(vm, vm->readState.s0 != vm->readState.s1);        break;
-        case OP_U32_GEQ:    pushValue(vm, vm->readState.s0 >= vm->readState.s1);        break;
-        case OP_U32_LEQ:    pushValue(vm, vm->readState.s0 <= vm->readState.s1);        break;
-        case OP_U32_GT:     pushValue(vm, vm->readState.s0 > vm->readState.s1);         break;
-        case OP_U32_LT:     pushValue(vm, vm->readState.s0 < vm->readState.s1);         break;
+        case OP_U32_EQ:     pushValue(vm, U32V(vm->readState.s0.u32 == vm->readState.s1.u32));  break;
+        case OP_U32_NEQ:    pushValue(vm, U32V(vm->readState.s0.u32 != vm->readState.s1.u32));  break;
+        case OP_U32_GEQ:    pushValue(vm, U32V(vm->readState.s0.u32 >= vm->readState.s1.u32));  break;
+        case OP_U32_LEQ:    pushValue(vm, U32V(vm->readState.s0.u32 <= vm->readState.s1.u32));  break;
+        case OP_U32_GT:     pushValue(vm, U32V(vm->readState.s0.u32 >  vm->readState.s1.u32));  break;
+        case OP_U32_LT:     pushValue(vm, U32V(vm->readState.s0.u32 <  vm->readState.s1.u32));  break;
 
         case OP_COND:       // if then else (BOOL @THEN @ELSE)
             if( !isTail ) {
                 pushReturn(vm);   // normal call: push return value
             }
-            if( vm->readState.s0 != 0 ) {
-                vm->fp  = vm->readState.s1;
+            if( vm->readState.s0.u32 != 0 ) {
+                vm->fp  = vm->readState.s1.u32;
             } else {
-                vm->fp  = vm->readState.s2;
+                vm->fp  = vm->readState.s2.u32;
             }
 
             vm->ip = 0;
             break;
 
-        case OP_CALL_IND:   vm->fp  = vm->readState.s0; vm->ip  = 0;                    break;
+        case OP_CALL_IND:   vm->fp  = vm->readState.s0.u32; vm->ip  = 0;                break;
 
         case OP_PUSH_LOCAL: pushLocal(vm, vm->readState.s0);                            break;
-        case OP_READ_LOCAL: pushValue(vm, getLocalValue(vm, vm->readState.s0));         break;
+        case OP_READ_LOCAL: pushValue(vm, getLocalValue(vm, vm->readState.s0.u32));     break;
 
 /*
         OP_READ_RET,
@@ -498,8 +500,8 @@ vmNew(const VMParameters* params)
     vm->funcs   = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
     vm->ins     = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
     vm->chars   = (char*)       calloc(params->maxCharSegmentSize,  1);
-    vm->vs      = (uint32_t*)   calloc(params->maxValuesCount,      sizeof(uint32_t));
-    vm->ls      = (uint32_t*)   calloc(params->maxLocalsCount,      sizeof(uint32_t));
+    vm->vs      = (Value*)      calloc(params->maxValuesCount,      sizeof(Value));
+    vm->ls      = (Value*)      calloc(params->maxLocalsCount,      sizeof(Value));
     vm->rs      = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
     vm->strms   = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
 
@@ -553,13 +555,13 @@ vmRelease(VM* vm) {
 
 
 void
-vmPushValue(VM* vm, uint32_t v) {
+vmPushValue(VM* vm, Value v) {
     assert(vm->vsCount < vm->vsCap);
     vm->vs[vm->vsCount] = v;
     ++vm->vsCount;
 }
 
-uint32_t
+Value
 vmPopValue(VM* vm) {
     assert(vm->vsCount != 0);
     --vm->vsCount;

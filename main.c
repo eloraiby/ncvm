@@ -39,7 +39,7 @@ main(int argc, char* argv[]) {
 
     vmLoad(vm, "bootstrap.4th");
 
-    vmPushValue(vm, 1);
+    vmPushValue(vm, (Value){ .u32 = 1 });
     vmReadEvalPrintLoop(vm);
 
     vmRelease(vm);
