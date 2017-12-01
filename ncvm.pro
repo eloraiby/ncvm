@@ -18,7 +18,7 @@ SOURCES += \
 
 DISTFILES += \
     LICENSE \
-    bootstrap.4th
+    bootstrap.ncvm
 
 HEADERS += \
-    nanoforth.h
+    ncvm.h

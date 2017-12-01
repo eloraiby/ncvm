@@ -16,7 +16,7 @@
 */
 
 #include <stdatomic.h>
-#include "nanoforth.h"
+#include "ncvm.h"
 
 Stream*
 vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode) {

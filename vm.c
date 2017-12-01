@@ -15,7 +15,7 @@
 **  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "nanoforth.h"
+#include "ncvm.h"
 
 #define U32V(V) (Value) { .u32 = V }
 
@@ -497,13 +497,23 @@ vmNew(const VMParameters* params)
     vm->rsCap   = params->maxReturnCount;
     vm->strmCap = params->maxFileCount;
 
-    vm->funcs   = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
-    vm->ins     = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
-    vm->chars   = (char*)       calloc(params->maxCharSegmentSize,  1);
-    vm->vs      = (Value*)      calloc(params->maxValuesCount,      sizeof(Value));
-    vm->ls      = (Value*)      calloc(params->maxLocalsCount,      sizeof(Value));
-    vm->rs      = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
-    vm->strms   = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
+    uint32_t    vsCapDiv64      = vm->vsCap / 64;
+    uint32_t    vsCapMod64      = vm->vsCap % 64;
+    uint32_t    vsObjBitsCount  = (vsCapMod64 != 0) ? (1 + vsCapDiv64) : vsCapDiv64;
+
+    uint32_t    lsCapDiv64      = vm->lsCap / 64;
+    uint32_t    lsCapMod64      = vm->lsCap % 64;
+    uint32_t    lsObjBitsCount  = (lsCapMod64 != 0) ? (1 + lsCapDiv64) : lsCapDiv64;
+
+    vm->funcs       = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
+    vm->ins         = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
+    vm->chars       = (char*)       calloc(params->maxCharSegmentSize,  1);
+    vm->vs          = (Value*)      calloc(params->maxValuesCount,      sizeof(Value));
+    vm->vsObjBits   = (uint64_t*)   calloc(vsObjBitsCount,              sizeof(uint64_t));
+    vm->ls          = (Value*)      calloc(params->maxLocalsCount,      sizeof(Value));
+    vm->lsObjBits   = (uint64_t*)   calloc(lsObjBitsCount,              sizeof(uint64_t));
+    vm->rs          = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
+    vm->strms       = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
 
     Stream*     errS    = vmStreamFromFile(vm, stderr, SM_WO);
     Stream*     outS    = vmStreamFromFile(vm, stdout, SM_WO);
@@ -539,6 +549,9 @@ vmRelease(VM* vm) {
     free(vm->ins);
     free(vm->chars);
     free(vm->vs);
+    free(vm->vsObjBits);
+    free(vm->ls);
+    free(vm->lsObjBits);
     free(vm->rs);
 
     for( uint32_t i = 0; i < vm->strmCount; ++i ) {

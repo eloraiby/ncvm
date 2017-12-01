@@ -15,11 +15,11 @@
 **  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "nanoforth.h"
+#include "ncvm.h"
 
 int
 main(int argc, char* argv[]) {
-    fprintf(stdout, "nanoforth 2017(c) Wael El Oraiby.\n");
+    fprintf(stdout, "nano Combinator VM \"nCVM\" 2017(c) Wael El Oraiby.\n");
 
     VMParameters    params = {
         .maxFunctionCount       = 4096,     // max function count
@@ -37,7 +37,7 @@ main(int argc, char* argv[]) {
 
     VM* vm = vmNew(&params);
 
-    vmLoad(vm, "bootstrap.4th");
+    vmLoad(vm, "bootstrap.ncvm");
 
     vmPushValue(vm, (Value){ .u32 = 1 });
     vmReadEvalPrintLoop(vm);

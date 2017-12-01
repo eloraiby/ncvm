@@ -155,15 +155,17 @@ struct VM {
 
     uint32_t        vsCount;
     uint32_t        vsCap;
+    uint64_t*       vsObjBits;  // value stack object bits
     Value*          vs;         // value stack
+
+    uint32_t        lsCount;
+    uint32_t        lsCap;
+    uint64_t*       lsObjBits;  // local object bits
+    Value*          ls;         // local stack
 
     uint32_t        rsCount;
     uint32_t        rsCap;
     Return*         rs;         // return stack
-
-    uint32_t        lsCount;
-    uint32_t        lsCap;
-    Value*          ls;         // local stack
 
     uint32_t        fp;         // current executing function
     uint32_t        ip;         // pointer to the next instruction to fetch
