@@ -44,7 +44,8 @@
 typedef uint32_t    bool;
 #endif
 
-typedef struct VM   VM;
+typedef struct VM       VM;
+typedef struct Process  Process;
 
 // these are made as defines because in ISO the enum values are limited to 0x7FFFFFFF
 #define OP_VALUE        0x00000000
@@ -58,7 +59,7 @@ typedef struct {
     uint32_t        insCount;
 } InterpFunction;
 
-typedef void (*NativeFunction)(VM* vm);
+typedef void (*NativeFunction)(Process* proc);
 
 typedef enum {
     FT_INTERP   = 0,
@@ -138,20 +139,10 @@ typedef struct {
     uint32_t        ciStart;    // compiler instruction start
 } CompiledFunctionEntry;
 
-struct VM {
-    bool            quit;
 
-    uint32_t        funcCount;
-    uint32_t        funCap;
-    Function*       funcs;      // function segment
-
-    uint32_t        insCount;
-    uint32_t        insCap;
-    uint32_t*       ins;        // code segment
-
-    uint32_t        charCount;
-    uint32_t        charCap;
-    char*           chars;      // constant char segment
+struct Process {
+    VM*             vm;         // root VM
+    Process*        next;       // next process in the list
 
     uint32_t        vsCount;
     uint32_t        vsCap;
@@ -167,19 +158,37 @@ struct VM {
     uint32_t        rsCap;
     Return*         rs;         // return stack
 
+    StringStack     ss;         // string stack
+
     uint32_t        fp;         // current executing function
     uint32_t        ip;         // pointer to the next instruction to fetch
     uint32_t        lp;         // local stack pointer
 
     ExceptFlags     exceptFlags;
+};
 
+struct VM {
+    bool            quit;
+
+    uint32_t        funcCount;
+    uint32_t        funCap;
+    Function*       funcs;      // function segment
+
+    uint32_t        insCount;
+    uint32_t        insCap;
+    uint32_t*       ins;        // code segment
+
+    uint32_t        charCount;
+    uint32_t        charCap;
+    char*           chars;      // constant char segment
+
+    Process*        rootProc;   // root process (supervisor, if it dies, the whole system halts)
+
+    // compiler section
     uint32_t        strmCount;
     uint32_t        strmCap;
     Stream**        strms;      // stream stack
 
-    StringStack     ss;         // string stack
-
-    // compiler section
     struct {
         uint32_t        cfsCount;   // compiled function stack count
         uint32_t        cfsCap;
@@ -230,10 +239,19 @@ typedef struct {
 } NativeFunctionEntry;
 
 
-void        vmPushValue     (VM* vm, Value v);
-Value       vmPopValue      (VM* vm);
-void        vmPushReturn    (VM* vm);
-void        vmPopReturn     (VM* vm);
+void        vmPushValue     (Process* proc, Value v);
+Value       vmPopValue      (Process* proc);
+void        vmPushReturn    (Process* proc);
+void        vmPopReturn     (Process* proc);
+/// pushes a string on the string stack and the string index on the value stack
+void        vmPushString    (Process* proc, const char* str);
+
+/// pop the string from the string stack (the value stack remains intact)
+void        vmPopString     (Process* proc);
+
+/// return the top string index
+uint32_t    vmTopString     (Process* proc);
+
 void        vmPushInstruction   (VM* vm, uint32_t opcode);
 void        vmPopInstruction(VM* vm);
 void        vmPushCompilerInstruction   (VM* vm, uint32_t opcode);
@@ -252,14 +270,6 @@ void        vmPopCompilerInstruction    (VM* vm);
 // } OP_TYPE;
 //
 
-/// pushes a string on the string stack and the string index on the value stack
-void        vmPushString    (VM* vm, const char* str);
-
-/// pop the string from the string stack (the value stack remains intact)
-void        vmPopString     (VM* vm);
-
-/// return the top string index
-uint32_t    vmTopString     (VM* vm);
 
 Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
 Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);
@@ -299,8 +309,10 @@ void        vmExecute   (VM* vm);
 
 void        vmNext      (VM* vm);
 
-void        vmReadEvalPrintLoop (VM* vm);
-void        vmLoad      (VM* vm, const char* stream);
+void        vmReadEvalPrintLoop (Process* proc);
+void        vmLoad      (Process* proc, const char* stream);
+
+Process*    vmRootProcess   (VM* vm);
 
 
 typedef struct {

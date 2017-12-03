@@ -36,11 +36,12 @@ main(int argc, char* argv[]) {
     };
 
     VM* vm = vmNew(&params);
+    Process* proc   = vmRootProcess(vm);
 
-    vmLoad(vm, "bootstrap.ncvm");
+    vmLoad(proc, "bootstrap.ncvm");
 
-    vmPushValue(vm, (Value){ .u32 = 1 });
-    vmReadEvalPrintLoop(vm);
+    vmPushValue(proc, (Value){ .u32 = 1 });
+    vmReadEvalPrintLoop(proc);
 
     vmRelease(vm);
     return 0;

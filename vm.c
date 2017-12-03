@@ -122,51 +122,51 @@ static Opcode opcodes[OP_MAX] = {
 
 INLINE
 void
-pushValue(VM* vm, Value v) {
-    assert(vm->vsCount < vm->vsCap);
-    vm->vs[vm->vsCount] = v;
-    ++vm->vsCount;
+pushValue(Process* proc, Value v) {
+    assert(proc->vsCount < proc->vsCap);
+    proc->vs[proc->vsCount] = v;
+    ++proc->vsCount;
 }
 
 INLINE
 Value
-popValue(VM* vm) {
-    assert(vm->vsCount != 0);
-    --vm->vsCount;
-    return vm->vs[vm->vsCount];
+popValue(Process* proc) {
+    assert(proc->vsCount != 0);
+    --proc->vsCount;
+    return proc->vs[proc->vsCount];
 }
 
 INLINE
 void
-pushLocal(VM* vm, Value v) {
-    assert(vm->lsCount < vm->lsCap);
-    vm->ls[vm->lsCount] = v;
-    ++vm->lsCount;
+pushLocal(Process* proc, Value v) {
+    assert(proc->lsCount < proc->lsCap);
+    proc->ls[proc->lsCount] = v;
+    ++proc->lsCount;
 }
 
 INLINE
 Value
-getLocalValue(VM* vm, uint32_t lidx) {
-    assert((lidx + vm->lp) < vm->lsCount);
-    return vm->ls[vm->lp + lidx];
+getLocalValue(Process* proc, uint32_t lidx) {
+    assert((lidx + proc->lp) < proc->lsCount);
+    return proc->ls[proc->lp + lidx];
 }
 
 INLINE
 void
-pushReturn(VM* vm) {
-    Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
-    vm->rs[vm->rsCount] = r;
-    ++vm->rsCount;
+pushReturn(Process* proc) {
+    Return r = { .fp = proc->fp, .ip = proc->ip, .lp = proc->lp };
+    proc->rs[proc->rsCount] = r;
+    ++proc->rsCount;
 }
 
 INLINE
 void
-popReturn(VM* vm) {
-    --vm->rsCount;
-    Return  r   = vm->rs[vm->rsCount];
-    vm->fp  = r.fp;
-    vm->ip  = r.ip;
-    vm->lp  = r.lp;
+popReturn(Process* proc) {
+    --proc->rsCount;
+    Return  r   = proc->rs[proc->rsCount];
+    proc->fp  = r.fp;
+    proc->ip  = r.ip;
+    proc->lp  = r.lp;
 }
 
 INLINE
@@ -197,39 +197,39 @@ addConstString(VM* vm, const char* str) {
 
 
 void
-vmPushString(VM* vm, const char* str) {
-    uint32_t    strIdx  = vm->ss.charCount;
+vmPushString(Process* proc, const char* str) {
+    uint32_t    strIdx  = proc->ss.charCount;
     while(*str) {
-        assert(vm->ss.charCount < vm->ss.charCap);
-        vm->ss.chars[vm->ss.charCount] = *str;
+        assert(proc->ss.charCount < proc->ss.charCap);
+        proc->ss.chars[proc->ss.charCount] = *str;
         ++str;
-        ++vm->ss.charCount;
+        ++proc->ss.charCount;
     }
-    vm->ss.chars[vm->ss.charCount]    = '\0';
-    ++vm->ss.charCount;
+    proc->ss.chars[proc->ss.charCount]    = '\0';
+    ++proc->ss.charCount;
 
-    assert(vm->ss.stringCount < vm->ss.stringCap);
-    vm->ss.strings[vm->ss.stringCount]  = strIdx;
+    assert(proc->ss.stringCount < proc->ss.stringCap);
+    proc->ss.strings[proc->ss.stringCount]  = strIdx;
 
-    ++vm->ss.stringCount;
+    ++proc->ss.stringCount;
 
     // push the string index on the value stack
-    vmPushValue(vm, U32V(strIdx));
+    vmPushValue(proc, U32V(strIdx));
 }
 
 void
-vmPopString(VM* vm) {
-    assert(vm->ss.charCount > 0);
-    assert(vm->ss.stringCount > 0);
-    vm->ss.charCount    = vm->ss.strings[vm->ss.stringCount - 1];
-    --vm->ss.stringCount;
+vmPopString(Process* proc) {
+    assert(proc->ss.charCount > 0);
+    assert(proc->ss.stringCount > 0);
+    proc->ss.charCount    = proc->ss.strings[proc->ss.stringCount - 1];
+    --proc->ss.stringCount;
 }
 
 uint32_t
-vmTopString(VM* vm) {
-    assert(vm->ss.charCount > 0);
-    assert(vm->ss.stringCount > 0);
-    return vm->ss.strings[vm->ss.stringCount - 1];
+vmTopString(Process* proc) {
+    assert(proc->ss.charCount > 0);
+    assert(proc->ss.stringCount > 0);
+    return proc->ss.strings[proc->ss.stringCount - 1];
 }
 
 //
