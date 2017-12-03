@@ -279,9 +279,10 @@ vmAddNativeFunction(VM* vm, const char* str, bool isImmediate, NativeFunction na
 }
 
 void
-vmFetch(VM* vm) {
-    uint32_t    ip      = vm->ip;
-    uint32_t    fp      = vm->fp;
+vmFetch(Process* proc) {
+    VM*         vm      = proc->vm;
+    uint32_t    ip      = proc->ip;
+    uint32_t    fp      = proc->fp;
 
     assert(fp < vm->funcCount);
 
@@ -291,57 +292,57 @@ vmFetch(VM* vm) {
 #endif
     Function    func        = vm->funcs[fp];
     uint32_t    fpInsCount  = ( func.type == FT_INTERP ) ? func.u.interp.insCount : 0;
-    vm->fetchState.doReturn = ( ip >= fpInsCount );
+    proc->fetchState.doReturn = ( ip >= fpInsCount );
 
-    if( !vm->fetchState.doReturn ) {
+    if( !proc->fetchState.doReturn ) {
         assert( func.type == FT_INTERP );
         uint32_t*   ins         = &vm->ins[func.u.interp.insOffset];
 
-        vm->fetchState.opcode   = ins[ip];
-        ++vm->ip;
-        vm->fetchState.isTail   = (vm->ip >= fpInsCount);
+        proc->fetchState.opcode   = ins[ip];
+        ++proc->ip;
+        proc->fetchState.isTail   = (proc->ip >= fpInsCount);
     }
 }
 
 void
-vmSetCall(VM* vm, uint32_t word) {
-    vm->fetchState.opcode   = word | OP_CALL;
-    vm->fetchState.doReturn = false;
-    vm->fetchState.isTail   = false;
-    vm->fp                  = word & OP_CALL_MASK;
-    vm->ip                  = 0;
+vmSetCall(Process* proc, uint32_t word) {
+    proc->fetchState.opcode     = word | OP_CALL;
+    proc->fetchState.doReturn   = false;
+    proc->fetchState.isTail     = false;
+    proc->fp                    = word & OP_CALL_MASK;
+    proc->ip                    = 0;
 }
 
 void
-vmSetTailCall(VM* vm, uint32_t word) {
-    vm->fetchState.opcode   = word | OP_CALL;
-    vm->fetchState.doReturn = false;
-    vm->fetchState.isTail   = true;
-    vm->fp                  = word & OP_CALL_MASK;
-    vm->ip                  = 0;
+vmSetTailCall(Process* proc, uint32_t word) {
+    proc->fetchState.opcode     = word | OP_CALL;
+    proc->fetchState.doReturn   = false;
+    proc->fetchState.isTail     = true;
+    proc->fp                    = word & OP_CALL_MASK;
+    proc->ip                    = 0;
 }
 
 void
-vmExecute(VM* vm) {
-
-    if( vm->fetchState.doReturn ) {
-        popReturn(vm);    // ip exceeds instruction count, return
+vmExecute(Process* proc) {
+    VM*     vm  = proc->vm;
+    if( proc->fetchState.doReturn ) {
+        popReturn(proc);    // ip exceeds instruction count, return
 #ifdef LOG_LEVEL_0
-        log("ret to %d:%d | rs count: %d\n", vm->fp, vm->ip, vm->rsCount);
+        log("ret to %d:%d | rs count: %d\n", proc->fp, proc->ip, proc->rsCount);
 #endif
         return;
     }
 
-    uint32_t    opcode      = vm->fetchState.opcode;
-    bool        isTail      = vm->fetchState.isTail;
+    uint32_t    opcode      = proc->fetchState.opcode;
+    bool        isTail      = proc->fetchState.isTail;
     uint32_t    operation   = getOperation(opcode);
     uint32_t    operand     = getOperand(opcode);
 
     if( operation == OP_VALUE ) {
 #ifdef LOG_LEVEL_0
-        log("\t[%d] %u\n", vm->vsCount, operand);
+        log("\t[%d] %u\n", proc->vsCount, operand);
 #endif
-        pushValue(vm, U32V(operand));
+        pushValue(proc, U32V(operand));
     } else { // OP_CALL
 #ifdef LOG_LEVEL_0
         const char* fName       = &vm->chars[vm->funcs[operand].nameOffset];
@@ -356,33 +357,33 @@ vmExecute(VM* vm) {
             case 0:
                 break;
             case 1:
-                vm->readState.s0    = popValue(vm);
+                proc->readState.s0  = popValue(proc);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d\n", vm->readState.s0.u32);
+                log("\tread: %d\n", proc->readState.s0.u32);
 #endif
                 break;
             case 2:
-                vm->readState.s1    = popValue(vm);
-                vm->readState.s0    = popValue(vm);
+                proc->readState.s1  = popValue(proc);
+                proc->readState.s0  = popValue(proc);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32);
+                log("\tread: %d, %d\n", proc->readState.s0.u32, proc->readState.s1.u32);
 #endif
                 break;
             case 3:
-                vm->readState.s2    = popValue(vm);
-                vm->readState.s1    = popValue(vm);
-                vm->readState.s0    = popValue(vm);
+                proc->readState.s2  = popValue(proc);
+                proc->readState.s1  = popValue(proc);
+                proc->readState.s0  = popValue(proc);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32, vm->readState.s2.u32);
+                log("\tread: %d, %d, %d\n", proc->readState.s0.u32, proc->readState.s1.u32, proc->readState.s2.u32);
 #endif
                 break;
             default:
-                vm->readState.s3    = popValue(vm);
-                vm->readState.s2    = popValue(vm);
-                vm->readState.s1    = popValue(vm);
-                vm->readState.s0    = popValue(vm);
+                proc->readState.s3  = popValue(proc);
+                proc->readState.s2  = popValue(proc);
+                proc->readState.s1  = popValue(proc);
+                proc->readState.s0  = popValue(proc);
 #ifdef LOG_LEVEL_0
-                log("\tread: %d, %d, %d, %d\n", vm->readState.s0.u32, vm->readState.s1.u32, vm->readState.s2.u32, vm->readState.s3.u32);
+                log("\tread: %d, %d, %d, %d\n", proc->readState.s0.u32, proc->readState.s1.u32, proc->readState.s2.u32, proc->readState.s3.u32);
 #endif
                 break;
             }
@@ -392,49 +393,49 @@ vmExecute(VM* vm) {
 
         case OP_NOP:        break;
         case OP_DUP:
-            pushValue(vm, vm->readState.s0);
-            pushValue(vm, vm->readState.s0);
+            pushValue(proc, proc->readState.s0);
+            pushValue(proc, proc->readState.s0);
             break;
-        case OP_REV_READ_VS:pushValue(vm, vm->vs[vm->vsCount - vm->readState.s0.u32 - 1]);  break;
+        case OP_REV_READ_VS:pushValue(proc, proc->vs[proc->vsCount - proc->readState.s0.u32 - 1]);   break;
 
-        case OP_U32_ADD:    pushValue(vm, U32V(vm->readState.s0.u32 + vm->readState.s1.u32));   break;
-        case OP_U32_SUB:    pushValue(vm, U32V(vm->readState.s0.u32 - vm->readState.s1.u32));   break;
-        case OP_U32_MUL:    pushValue(vm, U32V(vm->readState.s0.u32 * vm->readState.s1.u32));   break;
-        case OP_U32_DIV:    pushValue(vm, U32V(vm->readState.s0.u32 / vm->readState.s1.u32));   break;
-        case OP_U32_MOD:    pushValue(vm, U32V(vm->readState.s0.u32 % vm->readState.s1.u32));   break;
+        case OP_U32_ADD:    pushValue(proc, U32V(proc->readState.s0.u32 + proc->readState.s1.u32));  break;
+        case OP_U32_SUB:    pushValue(proc, U32V(proc->readState.s0.u32 - proc->readState.s1.u32));  break;
+        case OP_U32_MUL:    pushValue(proc, U32V(proc->readState.s0.u32 * proc->readState.s1.u32));  break;
+        case OP_U32_DIV:    pushValue(proc, U32V(proc->readState.s0.u32 / proc->readState.s1.u32));  break;
+        case OP_U32_MOD:    pushValue(proc, U32V(proc->readState.s0.u32 % proc->readState.s1.u32));  break;
 
-        case OP_U32_AND:    pushValue(vm, U32V(vm->readState.s0.u32 & vm->readState.s1.u32));   break;
-        case OP_U32_OR:     pushValue(vm, U32V(vm->readState.s0.u32 | vm->readState.s1.u32));   break;
-        case OP_U32_XOR:    pushValue(vm, U32V(vm->readState.s0.u32 ^ vm->readState.s1.u32));   break;
-        case OP_U32_INV:    pushValue(vm, U32V(~vm->readState.s0.u32));                         break;
+        case OP_U32_AND:    pushValue(proc, U32V(proc->readState.s0.u32 & proc->readState.s1.u32));  break;
+        case OP_U32_OR:     pushValue(proc, U32V(proc->readState.s0.u32 | proc->readState.s1.u32));  break;
+        case OP_U32_XOR:    pushValue(proc, U32V(proc->readState.s0.u32 ^ proc->readState.s1.u32));  break;
+        case OP_U32_INV:    pushValue(proc, U32V(~proc->readState.s0.u32));                          break;
 
-        case OP_U32_SHL:    pushValue(vm, U32V(vm->readState.s0.u32 << vm->readState.s1.u32));  break;
-        case OP_U32_SHR:    pushValue(vm, U32V(vm->readState.s0.u32 >> vm->readState.s1.u32));  break;
+        case OP_U32_SHL:    pushValue(proc, U32V(proc->readState.s0.u32 << proc->readState.s1.u32)); break;
+        case OP_U32_SHR:    pushValue(proc, U32V(proc->readState.s0.u32 >> proc->readState.s1.u32)); break;
 
-        case OP_U32_EQ:     pushValue(vm, U32V(vm->readState.s0.u32 == vm->readState.s1.u32));  break;
-        case OP_U32_NEQ:    pushValue(vm, U32V(vm->readState.s0.u32 != vm->readState.s1.u32));  break;
-        case OP_U32_GEQ:    pushValue(vm, U32V(vm->readState.s0.u32 >= vm->readState.s1.u32));  break;
-        case OP_U32_LEQ:    pushValue(vm, U32V(vm->readState.s0.u32 <= vm->readState.s1.u32));  break;
-        case OP_U32_GT:     pushValue(vm, U32V(vm->readState.s0.u32 >  vm->readState.s1.u32));  break;
-        case OP_U32_LT:     pushValue(vm, U32V(vm->readState.s0.u32 <  vm->readState.s1.u32));  break;
+        case OP_U32_EQ:     pushValue(proc, U32V(proc->readState.s0.u32 == proc->readState.s1.u32)); break;
+        case OP_U32_NEQ:    pushValue(proc, U32V(proc->readState.s0.u32 != proc->readState.s1.u32)); break;
+        case OP_U32_GEQ:    pushValue(proc, U32V(proc->readState.s0.u32 >= proc->readState.s1.u32)); break;
+        case OP_U32_LEQ:    pushValue(proc, U32V(proc->readState.s0.u32 <= proc->readState.s1.u32)); break;
+        case OP_U32_GT:     pushValue(proc, U32V(proc->readState.s0.u32 >  proc->readState.s1.u32)); break;
+        case OP_U32_LT:     pushValue(proc, U32V(proc->readState.s0.u32 <  proc->readState.s1.u32)); break;
 
         case OP_COND:       // if then else (BOOL @THEN @ELSE)
             if( !isTail ) {
-                pushReturn(vm);   // normal call: push return value
+                pushReturn(proc);   // normal call: push return value
             }
-            if( vm->readState.s0.u32 != 0 ) {
-                vm->fp  = vm->readState.s1.u32;
+            if( proc->readState.s0.u32 != 0 ) {
+                proc->fp    = proc->readState.s1.u32;
             } else {
-                vm->fp  = vm->readState.s2.u32;
+                proc->fp    = proc->readState.s2.u32;
             }
 
-            vm->ip = 0;
+            proc->ip = 0;
             break;
 
-        case OP_CALL_IND:   vm->fp  = vm->readState.s0.u32; vm->ip  = 0;                break;
+        case OP_CALL_IND:   proc->fp    = proc->readState.s0.u32; proc->ip  = 0;        break;
 
-        case OP_PUSH_LOCAL: pushLocal(vm, vm->readState.s0);                            break;
-        case OP_READ_LOCAL: pushValue(vm, getLocalValue(vm, vm->readState.s0.u32));     break;
+        case OP_PUSH_LOCAL: pushLocal(proc, proc->readState.s0);                        break;
+        case OP_READ_LOCAL: pushValue(proc, getLocalValue(proc, proc->readState.s0.u32));   break;
 
 /*
         OP_READ_RET,
@@ -451,26 +452,26 @@ vmExecute(VM* vm) {
             bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
             if( isNative ) {
 #ifdef LOG_LEVEL_0
-                log("\t[%d] <%s>\n", vm->vsCount, fName);
+                log("\t[%d] <%s>\n", proc->vsCount, fName);
 #endif
-                vm->funcs[operand].u.native(vm);
+                vm->funcs[operand].u.native(proc);
             } else {
                 if( !isTail ) {
 #ifdef LOG_LEVEL_0
-                    log("\t[%d] call ", vm->vsCount);
+                    log("\t[%d] call ", proc->vsCount);
 #endif
-                    pushReturn(vm);   // normal call: push return value
+                    pushReturn(proc);   // normal call: push return value
                 } else {
 #ifdef LOG_LEVEL_0
-                    log("\t[%d] tail ", vm->vsCount);
+                    log("\t[%d] tail ", proc->vsCount);
 #endif
                 }
 
 #ifdef LOG_LEVEL_0
-                log("[%d]\t%s\n", vm->rsCount, fName);
+                log("[%d]\t%s\n", proc->rsCount, fName);
 #endif
-                vm->fp  = operand;
-                vm->ip  = 0;
+                proc->fp    = operand;
+                proc->ip    = 0;
             }
             }
         }
@@ -478,9 +479,9 @@ vmExecute(VM* vm) {
 }
 
 void
-vmNext(VM* vm) {
-    vmFetch(vm);
-    vmExecute(vm);
+vmNext(Process* proc) {
+    vmFetch     (proc);
+    vmExecute   (proc);
 }
 
 
@@ -492,27 +493,12 @@ vmNew(const VMParameters* params)
     vm->funCap  = params->maxFunctionCount;
     vm->insCap  = params->maxInstructionCount;
     vm->charCap = params->maxCharSegmentSize;
-    vm->lsCap   = params->maxLocalsCount;
-    vm->vsCap   = params->maxValuesCount;
-    vm->rsCap   = params->maxReturnCount;
     vm->strmCap = params->maxFileCount;
 
-    uint32_t    vsCapDiv64      = vm->vsCap / 64;
-    uint32_t    vsCapMod64      = vm->vsCap % 64;
-    uint32_t    vsObjBitsCount  = (vsCapMod64 != 0) ? (1 + vsCapDiv64) : vsCapDiv64;
-
-    uint32_t    lsCapDiv64      = vm->lsCap / 64;
-    uint32_t    lsCapMod64      = vm->lsCap % 64;
-    uint32_t    lsObjBitsCount  = (lsCapMod64 != 0) ? (1 + lsCapDiv64) : lsCapDiv64;
 
     vm->funcs       = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
     vm->ins         = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
     vm->chars       = (char*)       calloc(params->maxCharSegmentSize,  1);
-    vm->vs          = (Value*)      calloc(params->maxValuesCount,      sizeof(Value));
-    vm->vsObjBits   = (uint64_t*)   calloc(vsObjBitsCount,              sizeof(uint64_t));
-    vm->ls          = (Value*)      calloc(params->maxLocalsCount,      sizeof(Value));
-    vm->lsObjBits   = (uint64_t*)   calloc(lsObjBitsCount,              sizeof(uint64_t));
-    vm->rs          = (Return*)     calloc(params->maxReturnCount,      sizeof(Return));
     vm->strms       = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
 
     Stream*     errS    = vmStreamFromFile(vm, stderr, SM_WO);
@@ -523,11 +509,6 @@ vmNew(const VMParameters* params)
     vmStreamPush(vm, outS);
     vmStreamPush(vm, inS);
 
-    vm->ss.chars        = (char*)calloc(params->maxSSCharCount, 1);
-    vm->ss.charCap      = params->maxSSCharCount;
-
-    vm->ss.strings      = (uint32_t*)calloc(params->maxSSStringCount, sizeof(uint32_t));
-    vm->ss.stringCap    = params->maxSSStringCount;
 
     vm->compilerState.cfs       = (CompiledFunctionEntry*)calloc(params->maxCFCount, sizeof(CompiledFunctionEntry));
     vm->compilerState.cfsCap    = params->maxCFCount;
@@ -548,53 +529,113 @@ vmRelease(VM* vm) {
     free(vm->funcs);
     free(vm->ins);
     free(vm->chars);
-    free(vm->vs);
-    free(vm->vsObjBits);
-    free(vm->ls);
-    free(vm->lsObjBits);
-    free(vm->rs);
 
     for( uint32_t i = 0; i < vm->strmCount; ++i ) {
         vmStreamPop(vm);
     }
     free(vm->strms);
 
-    free(vm->ss.chars);
-    free(vm->ss.strings);
     free(vm->compilerState.cfs);
     free(vm->compilerState.cis);
     free(vm);
 }
 
+Process*
+vmNewProcess(VM* vm,
+             uint32_t maxValueCount,
+             uint32_t maxLocalCount,
+             uint32_t maxReturnCount,
+             uint32_t maxCharCount,
+             uint32_t maxStringCount)
+{
+    Process*    proc    = (Process*)calloc(1, sizeof(Process));
+    proc->lsCap = maxLocalCount;
+    proc->vsCap = maxValueCount;
+    proc->rsCap = maxReturnCount;
+
+    uint32_t    vsCapDiv64      = maxValueCount / 64;
+    uint32_t    vsCapMod64      = maxValueCount % 64;
+    uint32_t    vsObjBitsCount  = (vsCapMod64 != 0) ? (1 + vsCapDiv64) : vsCapDiv64;
+
+    uint32_t    lsCapDiv64      = maxLocalCount / 64;
+    uint32_t    lsCapMod64      = maxLocalCount % 64;
+    uint32_t    lsObjBitsCount  = (lsCapMod64 != 0) ? (1 + lsCapDiv64) : lsCapDiv64;
+
+    proc->vs        = (Value*)      calloc(maxValueCount,   sizeof(Value));
+    proc->vsObjBits = (uint64_t*)   calloc(vsObjBitsCount,  sizeof(uint64_t));
+    proc->ls        = (Value*)      calloc(maxLocalCount,   sizeof(Value));
+    proc->lsObjBits = (uint64_t*)   calloc(lsObjBitsCount,  sizeof(uint64_t));
+    proc->rs        = (Return*)     calloc(maxReturnCount,  sizeof(Return));
+
+    proc->ss.chars      = (char*)calloc(maxCharCount, 1);
+    proc->ss.charCap    = maxCharCount;
+
+    proc->ss.strings    = (uint32_t*)calloc(maxStringCount, sizeof(uint32_t));
+    proc->ss.stringCap  = maxStringCount;
+
+    proc->vm    = vm;
+    proc->next  = vm->procList;
+    if( vm->procList != NULL ) {
+        vm->procList->prev  = proc;
+    }
+    vm->procList    = proc;
+    return proc;
+}
 
 void
-vmPushValue(VM* vm, Value v) {
-    assert(vm->vsCount < vm->vsCap);
-    vm->vs[vm->vsCount] = v;
-    ++vm->vsCount;
+vmReleaseProcess(Process* proc) {
+    if( proc->prev != NULL ) {
+        proc->prev->next    = proc->next;
+    }
+
+    if( proc->next != NULL ) {
+        proc->next->prev    = proc->prev;
+    }
+
+    if( proc->vm->procList == proc ) {
+        proc->vm->procList  = proc->next;
+    }
+
+    free(proc->vs);
+    free(proc->vsObjBits);
+    free(proc->ls);
+    free(proc->lsObjBits);
+    free(proc->rs);
+
+    free(proc->ss.chars);
+    free(proc->ss.strings);
+
+    free(proc);
+}
+
+void
+vmPushValue(Process* proc, Value v) {
+    assert(proc->vsCount < proc->vsCap);
+    proc->vs[proc->vsCount] = v;
+    ++proc->vsCount;
 }
 
 Value
-vmPopValue(VM* vm) {
-    assert(vm->vsCount != 0);
-    --vm->vsCount;
-    return vm->vs[vm->vsCount];
+vmPopValue(Process* proc) {
+    assert(proc->vsCount != 0);
+    --proc->vsCount;
+    return proc->vs[proc->vsCount];
 }
 
 void
-vmPushReturn(VM* vm) {
-    Return r = { .fp = vm->fp, .ip = vm->ip, .lp = vm->lp };
-    vm->rs[vm->rsCount] = r;
-    ++vm->rsCount;
+vmPushReturn(Process* proc) {
+    Return r = { .fp = proc->fp, .ip = proc->ip, .lp = proc->lp };
+    proc->rs[proc->rsCount] = r;
+    ++proc->rsCount;
 }
 
 void
-vmPopReturn(VM* vm) {
-    --vm->rsCount;
-    Return  r   = vm->rs[vm->rsCount];
-    vm->fp  = r.fp;
-    vm->ip  = r.ip;
-    vm->lp  = r.lp;
+vmPopReturn(Process* proc) {
+    --proc->rsCount;
+    Return  r   = proc->rs[proc->rsCount];
+    proc->fp    = r.fp;
+    proc->ip    = r.ip;
+    proc->lp    = r.lp;
 }
 
 void

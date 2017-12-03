@@ -142,6 +142,7 @@ typedef struct {
 
 struct Process {
     VM*             vm;         // root VM
+    Process*        prev;       // previous process in the list
     Process*        next;       // next process in the list
 
     uint32_t        vsCount;
@@ -165,39 +166,6 @@ struct Process {
     uint32_t        lp;         // local stack pointer
 
     ExceptFlags     exceptFlags;
-};
-
-struct VM {
-    bool            quit;
-
-    uint32_t        funcCount;
-    uint32_t        funCap;
-    Function*       funcs;      // function segment
-
-    uint32_t        insCount;
-    uint32_t        insCap;
-    uint32_t*       ins;        // code segment
-
-    uint32_t        charCount;
-    uint32_t        charCap;
-    char*           chars;      // constant char segment
-
-    Process*        rootProc;   // root process (supervisor, if it dies, the whole system halts)
-
-    // compiler section
-    uint32_t        strmCount;
-    uint32_t        strmCap;
-    Stream**        strms;      // stream stack
-
-    struct {
-        uint32_t        cfsCount;   // compiled function stack count
-        uint32_t        cfsCap;
-        CompiledFunctionEntry*  cfs;
-
-        uint32_t        cisCount;   // compiler instruction count
-        uint32_t        cisCap;
-        uint32_t*       cis;
-    }               compilerState;
 
     struct {
         bool            isTail;
@@ -222,8 +190,42 @@ struct VM {
     }               readState;
 };
 
-#define ABORT_ON_EXCEPTIONS()       { if( vm->exceptFlags.all ) { return; } }
-#define ABORT_ON_EXCEPTIONS_V(V)    { if( vm->exceptFlags.all ) { return V; } }
+struct VM {
+    bool            quit;
+
+    uint32_t        funcCount;
+    uint32_t        funCap;
+    Function*       funcs;      // function segment
+
+    uint32_t        insCount;
+    uint32_t        insCap;
+    uint32_t*       ins;        // code segment
+
+    uint32_t        charCount;
+    uint32_t        charCap;
+    char*           chars;      // constant char segment
+
+    Process*        procList;   // process list
+    Process*        activeProc; // currently active process
+
+    // compiler section
+    uint32_t        strmCount;
+    uint32_t        strmCap;
+    Stream**        strms;      // stream stack
+
+    struct {
+        uint32_t        cfsCount;   // compiled function stack count
+        uint32_t        cfsCap;
+        CompiledFunctionEntry*  cfs;
+
+        uint32_t        cisCount;   // compiler instruction count
+        uint32_t        cisCap;
+        uint32_t*       cis;
+    }               compilerState;
+};
+
+#define ABORT_ON_EXCEPTIONS()       { if( proc->exceptFlags.all ) { return; } }
+#define ABORT_ON_EXCEPTIONS_V(V)    { if( proc->exceptFlags.all ) { return V; } }
 
 #define STOP_IF(FLAG, COND)     { \
         ABORT_ON_EXCEPTIONS() \
@@ -301,18 +303,17 @@ COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
 void        vmRegisterStdWords  (VM* vm);
 
-void        vmSetCall           (VM* vm, uint32_t word);
-void        vmSetTailCall       (VM* vm, uint32_t word);
+void        vmSetCall           (Process* proc, uint32_t word);
+void        vmSetTailCall       (Process* proc, uint32_t word);
 
-void        vmFetch     (VM* vm);
-void        vmExecute   (VM* vm);
-
-void        vmNext      (VM* vm);
+void        vmFetch     (Process* proc);
+void        vmExecute   (Process* proc);
+void        vmNext      (Process* proc);
 
 void        vmReadEvalPrintLoop (Process* proc);
 void        vmLoad      (Process* proc, const char* stream);
 
-Process*    vmRootProcess   (VM* vm);
+Process*    vmProcessList   (VM* vm);
 
 
 typedef struct {
@@ -320,12 +321,7 @@ typedef struct {
     uint32_t    maxInstructionCount;    // max instruction count
     uint32_t    maxCharSegmentSize;     // max const char segment size
 
-    uint32_t    maxValuesCount;         // maximum value count (value stack)
-    uint32_t    maxLocalsCount;         // maximum local count (local stack)
-    uint32_t    maxReturnCount;         // maximum return count (return stack)
     uint32_t    maxFileCount;           // maximum file count (file stack)
-    uint32_t    maxSSCharCount;         // maximum stacked char count (char stack for string stack)
-    uint32_t    maxSSStringCount;       // maximum stacked string count (string stack)
 
     // compiler section
     uint32_t    maxCFCount;             // maximum compiler function count
@@ -333,6 +329,8 @@ typedef struct {
 } VMParameters;
 
 VM*         vmNew       (const VMParameters* params);
+Process*    vmNewProcess(VM* vm, uint32_t maxValueCount, uint32_t maxLocalCount, uint32_t maxReturnCount, uint32_t maxCharCount, uint32_t maxStringCount);
+void        vmReleaseProcess    (Process* proc);
 void        vmRelease   (VM* vm);
 
 

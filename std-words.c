@@ -300,10 +300,10 @@ vmReadEvalPrintLoop(Process* proc) {
                 proc->ip  = 0;
                 vmPushReturn(proc);
 
-                vmSetTailCall(vm, wordId - 1);
-                vmExecute(vm);
+                vmSetTailCall(proc, wordId - 1);
+                vmExecute(proc);
                 while(!vm->quit && proc->rsCount > origRetCount) {
-                    vmNext(vm);
+                    vmNext(proc);
                 }
             }
         }

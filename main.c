@@ -25,24 +25,19 @@ main(int argc, char* argv[]) {
         .maxFunctionCount       = 4096,     // max function count
         .maxInstructionCount    = 65536,    // max instruction count
         .maxCharSegmentSize     = 65536,    // max const char segment size
-        .maxValuesCount         = 1024,     // maximum value count (value stack)
-        .maxLocalsCount         = 1024,     // maximum local count (local stack)
-        .maxReturnCount         = 1024,     // maximum return count (return stack)
         .maxFileCount           = 1024,     // maximum file count (file stack)
-        .maxSSCharCount         = 2 * 65536,// maximum stacked char count (char stack for string stack)
-        .maxSSStringCount       = 32768,    // maximum stacked string count (string stack)
         .maxCFCount             = 64,       // maximum compiler function count
         .maxCISCount            = 65536,    // maximum compiler instruction count
     };
 
     VM* vm = vmNew(&params);
-    Process* proc   = vmRootProcess(vm);
+    Process* proc   = vmNewProcess(vm, 1024, 1024, 1024, 2 * 65536, 32769);
 
     vmLoad(proc, "bootstrap.ncvm");
 
     vmPushValue(proc, (Value){ .u32 = 1 });
     vmReadEvalPrintLoop(proc);
-
+    vmReleaseProcess(proc);
     vmRelease(vm);
     return 0;
 }
