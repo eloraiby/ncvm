@@ -12,9 +12,9 @@ TEMPLATE = app
 SOURCES += \
     main.c \
     std-words.c \
-    vm.c \
     stream.c \
-    forth-lang.c
+    forth-lang.c \
+    ncvm.c
 
 DISTFILES += \
     LICENSE \

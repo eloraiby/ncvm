@@ -530,7 +530,8 @@ vmRelease(VM* vm) {
     free(vm->ins);
     free(vm->chars);
 
-    for( uint32_t i = 0; i < vm->strmCount; ++i ) {
+    uint32_t    strmCount  = vm->strmCount;
+    for( uint32_t i = 0; i < strmCount; ++i ) {
         vmStreamPop(vm);
     }
     free(vm->strms);

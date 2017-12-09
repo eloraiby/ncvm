@@ -303,15 +303,15 @@ COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
 
 void        vmRegisterStdWords  (VM* vm);
 
-void        vmSetCall           (Process* proc, uint32_t word);
-void        vmSetTailCall       (Process* proc, uint32_t word);
+void        vmSetCall       (Process* proc, uint32_t word);
+void        vmSetTailCall   (Process* proc, uint32_t word);
 
-void        vmFetch     (Process* proc);
-void        vmExecute   (Process* proc);
-void        vmNext      (Process* proc);
+void        vmFetch         (Process* proc);
+void        vmExecute       (Process* proc);
+void        vmNext          (Process* proc);
 
 void        vmReadEvalPrintLoop (Process* proc);
-void        vmLoad      (Process* proc, const char* stream);
+void        vmLoad          (Process* proc, const char* stream);
 
 Process*    vmProcessList   (VM* vm);
 
