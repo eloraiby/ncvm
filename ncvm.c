@@ -64,6 +64,8 @@ typedef enum {
     OP_CURR_FP,         // current executing function pointer (index)
     OP_CURR_IP,         // current executing instruciton pointer (index)
 */
+    OP_YIELD,           // yield the current thread, next execution will continue at IP + 1
+
     OP_MAX,
 } OPCODE;
 
@@ -106,6 +108,8 @@ static Opcode opcodes[OP_MAX] = {
 
     [OP_PUSH_LOCAL] = { "ls.push",  1,  0 },
     [OP_READ_LOCAL] = { "ls.read",  1,  1 },
+
+    [OP_YIELD]      = { "yield",    0,  0 },
 
 /*
     OP_READ_RET,
@@ -448,6 +452,7 @@ vmExecute(Process* proc) {
         OP_CURR_IP,         // current executing instruciton pointer (index)
 
 */
+        case OP_YIELD:  proc->exceptFlags.indiv.yF  = true; break;
         default: {
             bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
             if( isNative ) {

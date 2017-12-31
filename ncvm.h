@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #ifdef NDEBUG
@@ -36,12 +37,6 @@
 #   define INLINE       static __attribute__((always_inline)) inline
 #else
 #   define INLINE       static inline
-#endif
-
-#ifndef __cplusplus
-#define false   0
-#define true    (!false)
-typedef uint32_t    bool;
 #endif
 
 typedef struct VM       VM;
@@ -131,6 +126,7 @@ typedef union {
         bool            fnOF    : 1;    // function count overflow flag
         bool            insOF   : 1;    // instruction count overflow flag
         bool            chOF    : 1;    // character segment overflow flag
+        bool            yF      : 1;    // yield flag
     } indiv;
 } ExceptFlags;
 
