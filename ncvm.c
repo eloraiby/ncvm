@@ -70,9 +70,10 @@ typedef enum {
 } OPCODE;
 
 typedef struct {
-   const char*  name;
-   uint32_t     inVs;
-   uint32_t     outVs;
+   const char*  name;   // word name
+   uint32_t     inVs;   // input value count
+   uint32_t     outVs;  // output value count
+   uint32_t     metaId; // meta data block id (types, source mapping,...)
 } Opcode;
 
 static Opcode opcodes[OP_MAX] = {
@@ -559,18 +560,8 @@ vmNewProcess(VM* vm,
     proc->vsCap = maxValueCount;
     proc->rsCap = maxReturnCount;
 
-    uint32_t    vsCapDiv64      = maxValueCount / 64;
-    uint32_t    vsCapMod64      = maxValueCount % 64;
-    uint32_t    vsObjBitsCount  = (vsCapMod64 != 0) ? (1 + vsCapDiv64) : vsCapDiv64;
-
-    uint32_t    lsCapDiv64      = maxLocalCount / 64;
-    uint32_t    lsCapMod64      = maxLocalCount % 64;
-    uint32_t    lsObjBitsCount  = (lsCapMod64 != 0) ? (1 + lsCapDiv64) : lsCapDiv64;
-
     proc->vs        = (Value*)      calloc(maxValueCount,   sizeof(Value));
-    proc->vsObjBits = (uint64_t*)   calloc(vsObjBitsCount,  sizeof(uint64_t));
     proc->ls        = (Value*)      calloc(maxLocalCount,   sizeof(Value));
-    proc->lsObjBits = (uint64_t*)   calloc(lsObjBitsCount,  sizeof(uint64_t));
     proc->rs        = (Return*)     calloc(maxReturnCount,  sizeof(Return));
 
     proc->ss.chars      = (char*)calloc(maxCharCount, 1);
@@ -603,9 +594,7 @@ vmReleaseProcess(Process* proc) {
     }
 
     free(proc->vs);
-    free(proc->vsObjBits);
     free(proc->ls);
-    free(proc->lsObjBits);
     free(proc->rs);
 
     free(proc->ss.chars);

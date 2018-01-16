@@ -21,4 +21,5 @@ DISTFILES += \
     bootstrap.ncvm
 
 HEADERS += \
-    ncvm.h
+    ncvm.h \
+    module.h
