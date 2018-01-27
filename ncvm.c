@@ -18,6 +18,7 @@
 #include "ncvm.h"
 
 #define U32V(V) (Value) { .u32 = V }
+#define I32V(V) (Value) { .i32 = V }
 
 typedef enum {
     OP_NOP      = 0,
@@ -47,6 +48,27 @@ typedef enum {
     OP_U32_GT,
     OP_U32_LT,
 
+    OP_I32_ADD,
+    OP_I32_SUB,
+    OP_I32_MUL,
+    OP_I32_DIV,
+    OP_I32_MOD,
+
+    OP_I32_AND,
+    OP_I32_OR,
+    OP_I32_XOR,
+    OP_I32_INV,
+
+    OP_I32_SHL,
+    OP_I32_SHR,
+
+    OP_I32_EQ,
+    OP_I32_NEQ,
+    OP_I32_GEQ,
+    OP_I32_LEQ,
+    OP_I32_GT,
+    OP_I32_LT,
+
     OP_COND,            // if then else (BOOL @THEN @ELSE)
 
     OP_CALL_IND,
@@ -54,17 +76,12 @@ typedef enum {
     OP_PUSH_LOCAL,
     OP_READ_LOCAL,
 
-/*
-    OP_READ_RET,
-
-    OP_VS_SIZE,         // value stack size so far
-    OP_RS_SIZE,         // return stack size so far
-    OP_LS_SIZE,         // local stack size so far
-
-    OP_CURR_FP,         // current executing function pointer (index)
-    OP_CURR_IP,         // current executing instruciton pointer (index)
-*/
     OP_YIELD,           // yield the current thread, next execution will continue at IP + 1
+    OP_SEND,            // send a message to another thread
+    OP_USE,             // allocate memory, init and use inside a scope
+    OP_SPAWN,           // spawn another thread
+
+    OP_PID,             // current process id
 
     OP_MAX,
 } OPCODE;
@@ -73,7 +90,6 @@ typedef struct {
    const char*  name;   // word name
    uint32_t     inVs;   // input value count
    uint32_t     outVs;  // output value count
-   uint32_t     metaId; // meta data block id (types, source mapping,...)
 } Opcode;
 
 static Opcode opcodes[OP_MAX] = {
@@ -103,6 +119,27 @@ static Opcode opcodes[OP_MAX] = {
     [OP_U32_GT ]    = { "u32.gt",   2,  1 },
     [OP_U32_LT ]    = { "u32.lt",   2,  1 },
 
+    [OP_I32_ADD]    = { "i32.add",  2,  1 },
+    [OP_I32_SUB]    = { "i32.sub",  2,  1 },
+    [OP_I32_MUL]    = { "i32.mul",  2,  1 },
+    [OP_I32_DIV]    = { "i32.div",  2,  1 },
+    [OP_I32_MOD]    = { "i32.mod",  2,  1 },
+
+    [OP_I32_AND]    = { "i32.and",  2,  1 },
+    [OP_I32_OR ]    = { "i32.or",   2,  1 },
+    [OP_I32_XOR]    = { "i32.xor",  2,  1 },
+    [OP_I32_INV]    = { "i32.not",  2,  1 },
+
+    [OP_I32_SHR]    = { "i32.shr",  2,  1 },
+    [OP_I32_SHL]    = { "i32.shl",  2,  1 },
+
+    [OP_I32_EQ ]    = { "i32.eq",   2,  1 },
+    [OP_I32_NEQ]    = { "i32.neq",  2,  1 },
+    [OP_I32_GEQ]    = { "i32.geq",  2,  1 },
+    [OP_I32_LEQ]    = { "i32.leq",  2,  1 },
+    [OP_I32_GT ]    = { "i32.gt",   2,  1 },
+    [OP_I32_LT ]    = { "i32.lt",   2,  1 },
+
     [OP_COND   ]    = { "cond",     3,  0 },
 
     [OP_CALL_IND  ] = { "call",     1,  0 },
@@ -110,19 +147,12 @@ static Opcode opcodes[OP_MAX] = {
     [OP_PUSH_LOCAL] = { "ls.push",  1,  0 },
     [OP_READ_LOCAL] = { "ls.read",  1,  1 },
 
-    [OP_YIELD]      = { "yield",    0,  0 },
+    [OP_YIELD]      = { "yield",    0,  0 },    // --
+    [OP_SEND]       = { "send",     3,  0 },    // mem-addr mem-size pid --
+    [OP_USE]        = { "use",      3,  0 },    // mem-size lambda-init lambda-exp --
+    [OP_SPAWN]      = { "spawn",    2,  1 },    // queue-size lambda -- pid
 
-/*
-    OP_READ_RET,
-
-    OP_VS_SIZE,         // value stack size so far
-    OP_RS_SIZE,         // return stack size so far
-    OP_LS_SIZE,         // local stack size so far
-
-    OP_CURR_FP,         // current executing function pointer (index)
-    OP_CURR_IP,         // current executing instruciton pointer (index)
-*/
-
+    [OP_PID]        = { "pid",      0,  1 },    // -- pid
 };
 
 INLINE
@@ -424,6 +454,27 @@ vmExecute(Process* proc) {
         case OP_U32_GT:     pushValue(proc, U32V(proc->readState.s0.u32 >  proc->readState.s1.u32)); break;
         case OP_U32_LT:     pushValue(proc, U32V(proc->readState.s0.u32 <  proc->readState.s1.u32)); break;
 
+        case OP_I32_ADD:    pushValue(proc, I32V(proc->readState.s0.i32 + proc->readState.s1.i32));  break;
+        case OP_I32_SUB:    pushValue(proc, I32V(proc->readState.s0.i32 - proc->readState.s1.i32));  break;
+        case OP_I32_MUL:    pushValue(proc, I32V(proc->readState.s0.i32 * proc->readState.s1.i32));  break;
+        case OP_I32_DIV:    pushValue(proc, I32V(proc->readState.s0.i32 / proc->readState.s1.i32));  break;
+        case OP_I32_MOD:    pushValue(proc, I32V(proc->readState.s0.i32 % proc->readState.s1.i32));  break;
+
+        case OP_I32_AND:    pushValue(proc, I32V(proc->readState.s0.i32 & proc->readState.s1.i32));  break;
+        case OP_I32_OR:     pushValue(proc, I32V(proc->readState.s0.i32 | proc->readState.s1.i32));  break;
+        case OP_I32_XOR:    pushValue(proc, I32V(proc->readState.s0.i32 ^ proc->readState.s1.i32));  break;
+        case OP_I32_INV:    pushValue(proc, I32V(~proc->readState.s0.i32));                          break;
+
+        case OP_I32_SHL:    pushValue(proc, I32V(proc->readState.s0.i32 << proc->readState.s1.i32)); break;
+        case OP_I32_SHR:    pushValue(proc, I32V(proc->readState.s0.i32 >> proc->readState.s1.i32)); break;
+
+        case OP_I32_EQ:     pushValue(proc, I32V(proc->readState.s0.u32 == proc->readState.s1.u32)); break;
+        case OP_I32_NEQ:    pushValue(proc, I32V(proc->readState.s0.u32 != proc->readState.s1.u32)); break;
+        case OP_I32_GEQ:    pushValue(proc, I32V(proc->readState.s0.u32 >= proc->readState.s1.u32)); break;
+        case OP_I32_LEQ:    pushValue(proc, I32V(proc->readState.s0.u32 <= proc->readState.s1.u32)); break;
+        case OP_I32_GT:     pushValue(proc, I32V(proc->readState.s0.u32 >  proc->readState.s1.u32)); break;
+        case OP_I32_LT:     pushValue(proc, I32V(proc->readState.s0.u32 <  proc->readState.s1.u32)); break;
+
         case OP_COND:       // if then else (BOOL @THEN @ELSE)
             if( !isTail ) {
                 pushReturn(proc);   // normal call: push return value
@@ -442,18 +493,13 @@ vmExecute(Process* proc) {
         case OP_PUSH_LOCAL: pushLocal(proc, proc->readState.s0);                        break;
         case OP_READ_LOCAL: pushValue(proc, getLocalValue(proc, proc->readState.s0.u32));   break;
 
-/*
-        OP_READ_RET,
-
-        OP_VS_SIZE,         // value stack size so far
-        OP_RS_SIZE,         // return stack size so far
-        OP_LS_SIZE,         // local stack size so far
-
-        OP_CURR_FP,         // current executing function pointer (index)
-        OP_CURR_IP,         // current executing instruciton pointer (index)
-
-*/
         case OP_YIELD:  proc->exceptFlags.indiv.yF  = true; break;
+
+        case OP_SEND: /* TODO */
+        case OP_USE: /* TODO */
+        case OP_SPAWN: /* TODO */
+        case OP_PID: /* TODO */
+            break;
         default: {
             bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
             if( isNative ) {
