@@ -1,7 +1,7 @@
 #pragma once
 
 /*
-** Copyright (c) 2017 Wael El Oraiby.
+** Copyright (c) 2017-2018 Wael El Oraiby.
 **
 **  This program is free software: you can redistribute it and/or modify
 **  it under the terms of the GNU Affero General Public License as
@@ -138,8 +138,7 @@ typedef struct {
 
 struct Process {
     VM*             vm;         // root VM
-    Process*        prev;       // previous process in the list
-    Process*        next;       // next process in the list
+    uint32_t        parent;     // parent process
 
     uint32_t        vsCount;
     uint32_t        vsCap;
@@ -199,8 +198,9 @@ struct VM {
     uint32_t        charCap;
     char*           chars;      // constant char segment
 
-    Process*        procList;   // process list
-    Process*        activeProc; // currently active process
+    uint32_t        procCount;  // process count
+    uint32_t        procCap;    // max processes
+    Process*        procs;      // process list
 
     // compiler section
     uint32_t        strmCount;

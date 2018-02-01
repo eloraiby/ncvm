@@ -14,7 +14,8 @@ SOURCES += \
     std-words.c \
     stream.c \
     forth-lang.c \
-    ncvm.c
+    ncvm.c \
+    lf-queue.c
 
 DISTFILES += \
     LICENSE \

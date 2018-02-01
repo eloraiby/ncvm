@@ -1,5 +1,5 @@
 /*
-** Copyright (c) 2017 Wael El Oraiby.
+** Copyright (c) 2017-2018 Wael El Oraiby.
 **
 **  This program is free software: you can redistribute it and/or modify
 **  it under the terms of the GNU Affero General Public License as
