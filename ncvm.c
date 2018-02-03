@@ -78,7 +78,8 @@ typedef enum {
 
     OP_YIELD,           // yield the current thread, next execution will continue at IP + 1
     OP_SEND,            // send a message to another thread
-    OP_USE,             // allocate memory, init and use inside a scope
+    OP_MAP,             // allocate memory
+    OP_UNMAP,           // release memory
     OP_SPAWN,           // spawn another thread
 
     OP_PID,             // current process id
@@ -149,7 +150,8 @@ static Opcode opcodes[OP_MAX] = {
 
     [OP_YIELD]      = { "yield",    0,  0 },    // --
     [OP_SEND]       = { "send",     3,  0 },    // mem-addr mem-size pid --
-    [OP_USE]        = { "use",      3,  0 },    // mem-size lambda-init lambda-exp --
+    [OP_MAP]        = { "map",      1,  1 },    // mem-size -- addr
+    [OP_UNMAP]      = { "unmap",    1,  0 },    // addr --
     [OP_SPAWN]      = { "spawn",    2,  1 },    // queue-size lambda -- pid
 
     [OP_PID]        = { "pid",      0,  1 },    // -- pid
@@ -496,7 +498,8 @@ vmExecute(Process* proc) {
         case OP_YIELD:  proc->exceptFlags.indiv.yF  = true; break;
 
         case OP_SEND: /* TODO */
-        case OP_USE: /* TODO */
+        case OP_MAP: /* TODO */
+        case OP_UNMAP: /* TODO */
         case OP_SPAWN: /* TODO */
         case OP_PID: /* TODO */
             break;
