@@ -497,9 +497,9 @@ vmExecute(Process* proc) {
 
         case OP_YIELD:  proc->exceptFlags.indiv.yF  = true; break;
 
-        case OP_SEND: /* TODO */
-        case OP_MAP: /* TODO */
-        case OP_UNMAP: /* TODO */
+        case OP_MAP:    pushValue(proc, (Value) { .ref = calloc(proc->readState.s0.u32, 1) });  break;
+        case OP_UNMAP:  free(proc->readState.s0.ref);   break;
+        case OP_SEND:   break; /* TODO */
         case OP_SPAWN: /* TODO */
         case OP_PID: /* TODO */
             break;
