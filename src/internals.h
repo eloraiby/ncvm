@@ -50,188 +50,195 @@ typedef struct Process  Process;
 #define MAX_TOKEN_SIZE  1023
 
 typedef struct {
-    uint32_t        insOffset;
-    uint32_t        insCount;
+	uint32_t        insOffset;
+	uint32_t        insCount;
 } InterpFunction;
 
 typedef void (*NativeFunction)(Process* proc);
 
 typedef enum {
-    FT_INTERP   = 0,
-    FT_NATIVE   = 1,
+	FT_INTERP   = 0,
+	FT_NATIVE   = 1,
 } FunctionType;
 
 typedef struct {
-    FunctionType    type;
-    bool            isImmediate;
-    uint32_t        nameOffset;
-    uint32_t        inVS;           // numner of input values to pop from the value stack
-    uint32_t        outVS;          // number of output values to push to the value stack
-    union {
-        InterpFunction  interp;
-        NativeFunction  native;
-    } u;
+	FunctionType    type;
+	bool            isImmediate;
+	uint32_t        nameOffset;
+	uint32_t        inVS;           // numner of input values to pop from the value stack
+	uint32_t        outVS;          // number of output values to push to the value stack
+	union {
+		InterpFunction  interp;
+		NativeFunction  native;
+	} u;
 } Function;
 
 typedef struct {
-    uint32_t        fp;     // function pointer
-    uint32_t        ip;     // next instruction address
-    uint32_t        lp;     // last local value stack address
+	uint32_t        fp;     // function pointer
+	uint32_t        ip;     // next instruction address
+	uint32_t        lp;     // last local value stack address
 } Return;
 
 typedef union {
-    bool            b;
-    char            c;
-    uint8_t         u8;
-    uint16_t        u16;
-    uint32_t        u32;
-    uint64_t        u64;
-    int8_t          i8;
-    int16_t         i16;
-    int32_t         i32;
-    int64_t         i64;
-    float           f32;
-    double          f64;
-    void*           ref;
+	bool            b;
+	char            c;
+	uint8_t         u8;
+	uint16_t        u16;
+	uint32_t        u32;
+	uint64_t        u64;
+	int8_t          i8;
+	int16_t         i16;
+	int32_t         i32;
+	int64_t         i64;
+	float           f32;
+	double          f64;
+	void*           ref;
 } Value;
 
 typedef enum {
-    SM_RO,
-    SM_WO,
-    SM_RW,
+	SM_RO,
+	SM_WO,
+	SM_RW,
 } STREAM_MODE;
 
 typedef struct {
-    atomic_uint     refCount;   // should be incremented/decremented atomically
-    STREAM_MODE     mode;
-    FILE*           file;
+	atomic_uint     refCount;   // should be incremented/decremented atomically
+	STREAM_MODE     mode;
+	FILE*           file;
 } Stream;
 
 typedef struct {
-    uint32_t        charCount;
-    uint32_t        charCap;
-    char*           chars;
-    uint32_t        stringCount;
-    uint32_t        stringCap;
-    uint32_t*       strings;
+	uint32_t        charCount;
+	uint32_t        charCap;
+	char*           chars;
+	uint32_t        stringCount;
+	uint32_t        stringCap;
+	uint32_t*       strings;
 } StringStack;
 
 typedef union {
-    uint32_t        all;
-    struct {
-        bool            vsOF    : 1;    // value stack overflow flag
-        bool            vsUF    : 1;    // value stack underflow flag
-        bool            rsOF    : 1;    // return stack overflow flag
-        bool            rsUF    : 1;    // return stack underflow flag
-        bool            fnOF    : 1;    // function count overflow flag
-        bool            insOF   : 1;    // instruction count overflow flag
-        bool            chOF    : 1;    // character segment overflow flag
-        bool            yF      : 1;    // yield flag
-    } indiv;
+	uint32_t        all;
+	struct {
+		bool            vsOF    : 1;    // value stack overflow flag
+		bool            vsUF    : 1;    // value stack underflow flag
+		bool            rsOF    : 1;    // return stack overflow flag
+		bool            rsUF    : 1;    // return stack underflow flag
+		bool            fnOF    : 1;    // function count overflow flag
+		bool            insOF   : 1;    // instruction count overflow flag
+		bool            chOF    : 1;    // character segment overflow flag
+		bool            yF      : 1;    // yield flag
+	} indiv;
 } ExceptFlags;
 
 typedef struct {
-    uint32_t        funcId;     // function index
-    uint32_t        ciStart;    // compiler instruction start
+	uint32_t        funcId;     // function index
+	uint32_t        ciStart;    // compiler instruction start
 } CompiledFunctionEntry;
 
+typedef struct {
+	uint32_t	ptr;
+} ProcPtr;
 
 struct Process {
-    VM*             vm;         // root VM
-    uint32_t        parent;     // parent process
+	VM*             vm;         // root VM
+	uint32_t        parent;     // parent process
 
-    uint32_t        vsCount;
-    uint32_t        vsCap;
-    Value*          vs;         // value stack
+	uint32_t		pid;
+	ProcPtr			next;
+	ProcPtr			prev;
 
-    uint32_t        lsCount;
-    uint32_t        lsCap;
-    Value*          ls;         // local value stack
+	uint32_t        vsCount;
+	uint32_t        vsCap;
+	Value*          vs;         // value stack
 
-    uint32_t        rsCount;
-    uint32_t        rsCap;
-    Return*         rs;         // return stack
+	uint32_t        lsCount;
+	uint32_t        lsCap;
+	Value*          ls;         // local value stack
 
-    StringStack     ss;         // string stack
+	uint32_t        rsCount;
+	uint32_t        rsCap;
+	Return*         rs;         // return stack
 
-    uint32_t        fp;         // current executing function
-    uint32_t        ip;         // pointer to the next instruction to fetch
-    uint32_t        lp;         // local stack pointer
+	StringStack     ss;         // string stack
 
-    ExceptFlags     exceptFlags;
+	uint32_t        fp;         // current executing function
+	uint32_t        ip;         // pointer to the next instruction to fetch
+	uint32_t        lp;         // local stack pointer
 
-    struct {
-        bool            isTail;
-        uint32_t        opcode;
-        bool            doReturn;
-    }               fetchState;
+	ExceptFlags     exceptFlags;
 
-    struct {
-        uint32_t        operation;
-        uint32_t        operand;
-        const char*     funcName;
-        uint32_t        argCount;
-        uint32_t        retCount;
-    }               decodeState;
+	struct {
+		bool            isTail;
+		uint32_t        opcode;
+		bool            doReturn;
+	}               fetchState;
 
-    struct {
+	struct {
+		uint32_t        operation;
+		uint32_t        operand;
+		const char*     funcName;
+		uint32_t        argCount;
+		uint32_t        retCount;
+	}               decodeState;
 
-        Value           s3;         // 4th arg
-        Value           s2;         // 3rd arg
-        Value           s1;         // 2nd arg
-        Value           s0;         // 1st arg
-    }               readState;
+	struct {
+
+		Value           s3;         // 4th arg
+		Value           s2;         // 3rd arg
+		Value           s1;         // 2nd arg
+		Value           s0;         // 1st arg
+	}               readState;
 };
 
 struct VM {
-    bool            quit;
+	bool            quit;
 
-    uint32_t        funcCount;
-    uint32_t        funCap;
-    Function*       funcs;      // function segment
+	uint32_t        funcCount;
+	uint32_t        funCap;
+	Function*       funcs;      // function segment
 
-    uint32_t        insCount;
-    uint32_t        insCap;
-    uint32_t*       ins;        // code segment
+	uint32_t        insCount;
+	uint32_t        insCap;
+	uint32_t*       ins;        // code segment
 
-    uint32_t        charCount;
-    uint32_t        charCap;
-    char*           chars;      // constant char segment
+	uint32_t        charCount;
+	uint32_t        charCap;
+	char*           chars;      // constant char segment
 
-    uint32_t        procCount;  // process count
-    uint32_t        procCap;    // max processes
-    Process*        procs;      // process list
+	uint32_t        procCount;  // process count
+	uint32_t        procCap;    // max processes
+	Process*        procs;      // process list
 
-    // compiler section
-    uint32_t        strmCount;
-    uint32_t        strmCap;
-    Stream**        strms;      // stream stack
+	// compiler section
+	uint32_t        strmCount;
+	uint32_t        strmCap;
+	Stream**        strms;      // stream stack
 
-    struct {
-        uint32_t        cfsCount;   // compiled function stack count
-        uint32_t        cfsCap;
-        CompiledFunctionEntry*  cfs;
+	struct {
+		uint32_t        cfsCount;   // compiled function stack count
+		uint32_t        cfsCap;
+		CompiledFunctionEntry*  cfs;
 
-        uint32_t        cisCount;   // compiler instruction count
-        uint32_t        cisCap;
-        uint32_t*       cis;
-    }               compilerState;
+		uint32_t        cisCount;   // compiler instruction count
+		uint32_t        cisCap;
+		uint32_t*       cis;
+	}               compilerState;
 };
 
 #define ABORT_ON_EXCEPTIONS()       { if( proc->exceptFlags.all ) { return; } }
 #define ABORT_ON_EXCEPTIONS_V(V)    { if( proc->exceptFlags.all ) { return V; } }
 
 #define STOP_IF(FLAG, COND)     { \
-        ABORT_ON_EXCEPTIONS() \
-        if( (vm->flags.exceptFlags.indiv.FLAG = COND) ) { return; } } \
-    }
+		ABORT_ON_EXCEPTIONS() \
+		if( (vm->flags.exceptFlags.indiv.FLAG = COND) ) { return; } } \
+	}
 
 typedef struct {
-    const char*     name;
-    bool            isImmediate;
-    NativeFunction  native;
-    uint32_t        inCount;
-    uint32_t        outCount;
+	const char*     name;
+	bool            isImmediate;
+	NativeFunction  native;
+	uint32_t        inCount;
+	uint32_t        outCount;
 } NativeFunctionEntry;
 
 
@@ -289,8 +296,8 @@ uint32_t    vmAllocateInterpFunction(VM* vm, const char* str);
 uint32_t    vmAddNativeFunction     (VM* vm, const char* str, bool isImmediate, NativeFunction native, uint32_t inVS, uint32_t outVS);
 
 typedef enum {
-    CS_NO_ERROR,
-    CS_ERROR,
+	CS_NO_ERROR,
+	CS_ERROR,
 } COMPILATION_STATE;
 
 COMPILATION_STATE   vmCompileString(VM* vm, const char* str);
@@ -311,15 +318,15 @@ Process*    vmProcessList   (VM* vm);
 
 
 typedef struct {
-    uint32_t    maxFunctionCount;       // max function count
-    uint32_t    maxInstructionCount;    // max instruction count
-    uint32_t    maxCharSegmentSize;     // max const char segment size
+	uint32_t    maxFunctionCount;       // max function count
+	uint32_t    maxInstructionCount;    // max instruction count
+	uint32_t    maxCharSegmentSize;     // max const char segment size
 
-    uint32_t    maxFileCount;           // maximum file count (file stack)
+	uint32_t    maxFileCount;           // maximum file count (file stack)
 
-    // compiler section
-    uint32_t    maxCFCount;             // maximum compiler function count
-    uint32_t    maxCISCount;            // maximum compiler instruction count
+	// compiler section
+	uint32_t    maxCFCount;             // maximum compiler function count
+	uint32_t    maxCISCount;            // maximum compiler instruction count
 } VMParameters;
 
 VM*         vmNew       (const VMParameters* params);

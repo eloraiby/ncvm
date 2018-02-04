@@ -10,17 +10,17 @@ CONFIG -= app_bundle
 TEMPLATE = app
 
 SOURCES += \
-    main.c \
-    std-words.c \
-    stream.c \
-    forth-lang.c \
-    ncvm.c \
-    lf-queue.c
+    src/main.c \
+    src/std-words.c \
+    src/stream.c \
+    src/forth-lang.c \
+    src/ncvm.c \
+    src/lf-queue.c
 
 DISTFILES += \
     LICENSE \
     bootstrap.ncvm
 
 HEADERS += \
-    ncvm.h \
-    module.h
+    src/internals.h \
+    src/module.h
