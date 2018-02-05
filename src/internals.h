@@ -223,6 +223,7 @@ struct VM {
 		uint32_t        cisCap;
 		uint32_t*       cis;
 	}               compilerState;
+
 };
 
 #define ABORT_ON_EXCEPTIONS()       { if( proc->exceptFlags.all ) { return; } }
