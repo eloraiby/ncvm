@@ -141,11 +141,11 @@ typedef struct {
 
 struct Process {
 	VM*             vm;         // root VM
-	uint32_t        parent;     // parent process
+    ProcPtr         parent;     // parent process
 
-	uint32_t		pid;
-	ProcPtr			next;
-	ProcPtr			prev;
+    uint32_t		pid;        // process id
+    ProcPtr			next;       // next sibling
+    ProcPtr			prev;       // prev sibling
 
 	uint32_t        vsCount;
 	uint32_t        vsCap;
