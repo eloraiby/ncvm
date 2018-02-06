@@ -3,7 +3,8 @@ project(ncvm)
 
 include_directories(include src)
 
-add_executable(ncvm src/lock-free/lf-queue.c
+add_executable(ncvm src/lock-free/uqueue.c
+                    src/lock-free/bqueue.c
                     src/main.c
                     src/ncvm.c
                     src/std-words.c
