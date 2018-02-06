@@ -84,7 +84,10 @@ typedef enum {
 	OP_SPAWN,           // spawn another thread
 	OP_PID,             // current process id
 
-	OP_MAX,
+    OP_VS,              // get Value Stack size
+    OP_RS,              // get Return stack size
+
+    OP_MAX,
 } OPCODE;
 
 typedef struct {
@@ -155,6 +158,9 @@ static Opcode opcodes[OP_MAX] = {
 	[OP_SEND]       = { "send",     3,  0 },    // mem-addr mem-size pid --
 	[OP_SPAWN]      = { "spawn",    2,  1 },    // queue-size lambda -- pid
 	[OP_PID]        = { "pid",      0,  1 },    // -- pid
+
+    [OP_VS]         = { "vs.size",  0,  1 },
+    [OP_RS]         = { "rs.size",  0,  1 },
 };
 
 INLINE
@@ -503,7 +509,10 @@ vmExecute(Process* proc) {
 		case OP_SPAWN: /* TODO */
 		case OP_PID: /* TODO */
 			break;
-		default: {
+
+        case OP_VS:     pushValue(proc, U32V(proc->vsCount)); break;
+        case OP_RS:     pushValue(proc, U32V(proc->rsCount)); break;
+        default: {
 			bool    isNative    = (vm->funcs[operand].type == FT_NATIVE);
 			if( isNative ) {
 #ifdef LOG_LEVEL_0
