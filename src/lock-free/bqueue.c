@@ -72,7 +72,6 @@ BoundedQueue_push(BoundedQueue* bq, void* data) {
     uint32_t    cap         = bq->cap;
     if( FirstLast_remaining(fl, cap) == 0 ) return false;
     while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incLast(fl).u64) ) {
-        fl = bq->fl;
         if( FirstLast_remaining(fl, cap) >= cap ) return false;
     }
 
@@ -86,7 +85,6 @@ BoundedQueue_pop(BoundedQueue* bq) {
     uint32_t    cap     = bq->cap;
     if( FirstLast_remaining(fl, cap) == cap ) { return NULL; }
     while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incFirst(fl).u64) ) {
-        fl = bq->fl;
         if( FirstLast_remaining(fl, cap) == cap ) { return NULL; }
     }
 

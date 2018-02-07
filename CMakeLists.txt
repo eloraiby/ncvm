@@ -7,6 +7,7 @@ FILE(GLOB_RECURSE LibFiles "*.h")
 add_custom_target(headers SOURCES ${LibFiles})
 add_executable(ncvm src/lock-free/uqueue.c
                     src/lock-free/bqueue.c
+                    src/lock-free/bstack.c
                     src/main.c
                     src/ncvm.c
                     src/std-words.c
