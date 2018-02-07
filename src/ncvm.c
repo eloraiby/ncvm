@@ -558,12 +558,13 @@ vmNew(const VMParameters* params)
 	vm->insCap  = params->maxInstructionCount;
 	vm->charCap = params->maxCharSegmentSize;
 	vm->strmCap = params->maxFileCount;
-
+    vm->procCap = params->maxProcCount;
 
 	vm->funcs       = (Function*)   calloc(params->maxFunctionCount,    sizeof(Function));
 	vm->ins         = (uint32_t*)   calloc(params->maxInstructionCount, sizeof(uint32_t));
 	vm->chars       = (char*)       calloc(params->maxCharSegmentSize,  1);
 	vm->strms       = (Stream**)    calloc(params->maxFileCount,        sizeof(Stream*));
+    vm->procs       = (Process*)    calloc(params->maxProcCount,        sizeof(Process));
 
 	Stream*     errS    = vmStreamFromFile(vm, stderr, SM_WO);
 	Stream*     outS    = vmStreamFromFile(vm, stdout, SM_WO);
@@ -602,11 +603,17 @@ vmRelease(VM* vm) {
 
 	free(vm->compilerState.cfs);
 	free(vm->compilerState.cis);
+
+    // TODO: destroy all processes
+    free(vm->procs);
 	free(vm);
 }
 
 Process*
 vmNewProcess(VM* vm,
+             ProcPtr  _this_,
+             ProcPtr  parent,
+             ProcPtr  next,
 			 uint32_t maxValueCount,
 			 uint32_t maxLocalCount,
 			 uint32_t maxReturnCount,
@@ -628,28 +635,22 @@ vmNewProcess(VM* vm,
 	proc->ss.strings    = (uint32_t*)calloc(maxStringCount, sizeof(uint32_t));
 	proc->ss.stringCap  = maxStringCount;
 
-	proc->vm    = vm;
-	proc->next  = vm->procList;
-	if( vm->procList != NULL ) {
-		vm->procList->prev  = proc;
-	}
-	vm->procList    = proc;
+    proc->vm        = vm;
+    proc->parent    = parent;
+
+    if( next.ptr == (uint32_t)-1 ) {
+        vm->procs[parent.ptr].children  = _this_;
+    } else {
+        vm->procs[next.ptr].prev    = _this_;
+    }
+
+    proc->next      = next;
 	return proc;
 }
 
 void
 vmReleaseProcess(Process* proc) {
-	if( proc->prev != NULL ) {
-		proc->prev->next    = proc->next;
-	}
-
-	if( proc->next != NULL ) {
-		proc->next->prev    = proc->prev;
-	}
-
-	if( proc->vm->procList == proc ) {
-		proc->vm->procList  = proc->next;
-	}
+    // TODO: destroy children processes
 
 	free(proc->vs);
 	free(proc->ls);

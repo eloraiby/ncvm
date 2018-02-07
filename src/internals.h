@@ -143,9 +143,11 @@ struct Process {
 	VM*             vm;         // root VM
     ProcPtr         parent;     // parent process
 
-    uint32_t		pid;        // process id
+    uint64_t		pid;        // process id
     ProcPtr			next;       // next sibling
     ProcPtr			prev;       // prev sibling
+
+    ProcPtr         children;   // process children
 
 	uint32_t        vsCount;
 	uint32_t        vsCap;
@@ -319,6 +321,7 @@ Process*    vmProcessList   (VM* vm);
 
 
 typedef struct {
+    uint32_t    maxProcCount;           // max processor count
 	uint32_t    maxFunctionCount;       // max function count
 	uint32_t    maxInstructionCount;    // max instruction count
 	uint32_t    maxCharSegmentSize;     // max const char segment size
@@ -331,7 +334,7 @@ typedef struct {
 } VMParameters;
 
 VM*         vmNew       (const VMParameters* params);
-Process*    vmNewProcess(VM* vm, uint32_t maxValueCount, uint32_t maxLocalCount, uint32_t maxReturnCount, uint32_t maxCharCount, uint32_t maxStringCount);
+Process*    vmNewProcess(VM* vm, ProcPtr _this_, ProcPtr parent, ProcPtr next, uint32_t maxValueCount, uint32_t maxLocalCount, uint32_t maxReturnCount, uint32_t maxCharCount, uint32_t maxStringCount);
 void        vmReleaseProcess    (Process* proc);
 void        vmRelease   (VM* vm);
 

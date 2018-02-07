@@ -22,6 +22,7 @@ main(int argc, char* argv[]) {
 	fprintf(stdout, "nano Combinator VM \"nCVM\" 2017(c) Wael El Oraiby.\n");
 
 	VMParameters    params = {
+        .maxProcCount           = 16384,    // max process count
 		.maxFunctionCount       = 4096,     // max function count
 		.maxInstructionCount    = 65536,    // max instruction count
 		.maxCharSegmentSize     = 65536,    // max const char segment size
@@ -31,7 +32,7 @@ main(int argc, char* argv[]) {
 	};
 
 	VM* vm = vmNew(&params);
-	Process* proc   = vmNewProcess(vm, 1024, 1024, 1024, 2 * 65536, 32769);
+    Process* proc   = vmNewProcess(vm, (ProcPtr){ .ptr = 0 }, (ProcPtr){ .ptr = 0 }, (ProcPtr){ .ptr = 0 }, 1024, 1024, 1024, 2 * 65536, 32769);
 
 	vmLoad(proc, "bootstrap.ncvm");
 
