@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef union {
     struct {
@@ -46,6 +47,13 @@ FirstLast_remaining(FirstLast fl, uint32_t cap) {
     return (fl.fl.first > fl.fl.last) ? (fl.fl.last - fl.fl.first) : (fl.fl.last + cap - fl.fl.first);
 }
 
+static inline
+uint32_t
+FirstLast_count(FirstLast fl, uint32_t cap) {
+    uint32_t    remaining   = FirstLast_remaining(fl, cap);
+    return cap - remaining;
+}
+
 typedef struct {
     FirstLast   fl;
     uint32_t    cap;
@@ -53,8 +61,8 @@ typedef struct {
 } BoundedQueue;
 
 BoundedQueue*
-BoundedQueue_new(uint32_t cap) {
-    BoundedQueue*   bq  = calloc(1, sizeof(BoundedQueue));
+BoundedQueue_init(BoundedQueue* bq, uint32_t cap) {
+    memset(bq, 0, sizeof(BoundedQueue));
     bq->cap             = cap;
     bq->elements        = calloc(cap, sizeof(void*));
     return bq;
@@ -63,7 +71,6 @@ BoundedQueue_new(uint32_t cap) {
 void
 BoundedQueue_release(BoundedQueue* bq) {
     free(bq->elements);
-    free(bq);
 }
 
 bool
@@ -71,11 +78,13 @@ BoundedQueue_push(BoundedQueue* bq, void* data) {
     FirstLast   fl          = bq->fl;
     uint32_t    cap         = bq->cap;
     if( FirstLast_remaining(fl, cap) == 0 ) return false;
+
+    atomic_store(&(bq->elements[fl.fl.last % cap]), data);
+
     while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incLast(fl).u64) ) {
         if( FirstLast_remaining(fl, cap) >= cap ) return false;
     }
 
-    bq->elements[fl.fl.last % cap]   = data;
     return true;
 }
 
@@ -83,10 +92,10 @@ void*
 BoundedQueue_pop(BoundedQueue* bq) {
     FirstLast   fl      = bq->fl;
     uint32_t    cap     = bq->cap;
-    if( FirstLast_remaining(fl, cap) == cap ) { return NULL; }
+    if( FirstLast_count(fl, cap) == 0 ) { return NULL; }
     while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incFirst(fl).u64) ) {
-        if( FirstLast_remaining(fl, cap) == cap ) { return NULL; }
+        if( FirstLast_count(fl, cap) == 0 ) { return NULL; }
     }
 
-    return bq->elements[fl.fl.first % cap];
+    return atomic_load(&(bq->elements[fl.fl.first % cap]));
 }
