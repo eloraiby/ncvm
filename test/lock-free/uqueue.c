@@ -23,25 +23,39 @@
 #define MAX_QUEUE_SIZE      1024
 
 void*
-producer(void* _bq) {
+producer0(void* _bq) {
     Queue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1; i < 10 * MAX_QUEUE_SIZE; ++i ) {
         Queue_push(bq, (void*)i);
         sum += i;
     }
 
-    fprintf(stderr, "**** producer sum: %u ****\n", sum);
+    fprintf(stderr, "**** producer0 sum: %u ****\n", sum);
     return (void*)sum;
 }
 
 void*
-consumer(void* _bq) {
+producer1(void* _bq) {
     Queue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 10 * MAX_QUEUE_SIZE; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+        Queue_push(bq, (void*)i);
+        sum += i;
+    }
+
+    fprintf(stderr, "**** producer1 sum: %u ****\n", sum);
+    return (void*)sum;
+}
+
+void*
+consumer0(void* _bq) {
+    Queue*   bq  = _bq;
+
+    size_t  sum = 0;
+    for( size_t i = 1; i < 10 * MAX_QUEUE_SIZE; ++i ) {
 
         bool    succeeded = false;
         while( succeeded == false ) {
@@ -51,31 +65,67 @@ consumer(void* _bq) {
                 sum += v;
                 succeeded   = true;
             } else {
-                fprintf(stderr, "-- consumer yielded (%u) --\n", i);
+                fprintf(stderr, "-- consumer0 yielded (%u) --\n", i);
                 pthread_yield();
             }
         }
     }
 
-    fprintf(stderr, "**** consumer sum: %u ****\n", sum);
+    fprintf(stderr, "**** consumer0 sum: %u ****\n", sum);
+    return (void*)sum;
+}
+
+void*
+consumer1(void* _bq) {
+    Queue*   bq  = _bq;
+
+    size_t  sum = 0;
+    for( size_t i = 10 * MAX_QUEUE_SIZE; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+
+        bool    succeeded = false;
+        while( succeeded == false ) {
+            void* v = NULL;
+            if( (v = Queue_pop(bq)) != NULL ) {
+                //fprintf(stderr, "poped: %u\n", v);
+                sum += v;
+                succeeded   = true;
+            } else {
+                fprintf(stderr, "-- consumer1 yielded (%u) --\n", i);
+                pthread_yield();
+            }
+        }
+    }
+
+    fprintf(stderr, "**** consumer1 sum: %u ****\n", sum);
     return (void*)sum;
 }
 
 int
 main(int argc, char* argv[]) {
 
-    pthread_t   prod, cons;
+    pthread_t   prod0, prod1, cons0, cons1;
     Queue*      bq  = Queue_new();
-    pthread_create(&prod, NULL, producer, bq);
-    pthread_create(&cons, NULL, consumer, bq);
+    pthread_create(&prod0, NULL, producer0, bq);
+    pthread_create(&prod1, NULL, producer1, bq);
+    pthread_create(&cons0, NULL, consumer0, bq);
+    pthread_create(&cons1, NULL, consumer1, bq);
 
 
-    size_t  sprod   = 0;
-    size_t  scons   = 0;
-    pthread_join(prod, (void**)&sprod);
-    pthread_join(cons, (void**)&scons);
+    size_t  sprod0  = 0;
+    size_t  sprod1  = 0;
+    size_t  scons0  = 0;
+    size_t  scons1  = 0;
+    pthread_join(prod0, (void**)&sprod0);
+    pthread_join(prod1, (void**)&sprod1);
+    pthread_join(cons0, (void**)&scons0);
+    pthread_join(cons1, (void**)&scons1);
 
-    assert( sprod == scons );
+    assert( (sprod0 + sprod1) == (scons0 + scons1) );
+
+    if( (sprod0 + sprod1) != (scons0 + scons1) ) {
+        fprintf(stderr, "FAIL!!!\n");
+    }
+
     Queue_release(bq);
     return 0;
 }
