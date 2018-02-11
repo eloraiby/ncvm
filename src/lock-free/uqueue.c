@@ -20,18 +20,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-
-typedef struct Node Node;
-
-struct Node {
-	void*   data;
-	Node*   next;
-};
-
-typedef struct {
-	Node*   first;
-	Node*   last;
-} Queue;
+#include "lock-free.h"
 
 Queue*
 Queue_new() {
@@ -53,30 +42,32 @@ Queue_release(Queue* q) {
 }
 
 void
-Qeue_push(Queue* q, void *data) {
+Queue_push(Queue* q, void *data) {
 	Node*   n       = calloc(1, sizeof(Node));
-	Node*   last    = q->last;
+    Node*   last    = atomic_load_explicit(&q->last, memory_order_acquire);
 	while( !atomic_compare_exchange_weak(&q->last, &last, n) ) {
-		last    = q->last;
+        last    = atomic_load_explicit(&q->last, memory_order_acquire);
 	}
-	atomic_store(&last->next , n);
-	last->data  = data;
+    atomic_store_explicit(&last->next , n, memory_order_release);
+    atomic_store_explicit(&last->data, data, memory_order_release);
 }
 
 void*
 Queue_pop(Queue* q) {
 	while( 1 ) {
-		Node*   first   = q->first;
-		Node*   next    = first->next;
+        Node*   first   = atomic_load_explicit(&q->first, memory_order_acquire);
+        Node*   next    = atomic_load_explicit(&first->next, memory_order_acquire);
 
-		if( !first->data ) continue;
+        if( !next || !first->data ) return NULL;   // we'r at the tail and push in progress
 
 		while( !atomic_compare_exchange_strong(&q->first, &first, next) ) {
-			first   = q->first;
-			next    = atomic_load(&first->next);
+            first   = atomic_load_explicit(&q->first, memory_order_acquire);
+            next    = atomic_load_explicit(&first->next, memory_order_acquire);
 		}
+        void* data  = atomic_load_explicit(&first->data, memory_order_acquire);
+        free(first);
 
-		return first->data;
+        return data;
 	}
 }
 

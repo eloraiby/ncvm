@@ -27,6 +27,13 @@ typedef union {
     } fl;
     uint64_t    u64;
 } FirstLast;
+/*
+typedef struct {
+    FirstLast   fl;
+    uint32_t    cap;
+    void**      elements;
+} BoundedQueue;
+*/
 
 typedef struct {
     FirstLast   fl;
@@ -38,3 +45,24 @@ BoundedQueue*   BoundedQueue_init(BoundedQueue* bq, uint32_t cap);
 void            BoundedQueue_release(BoundedQueue* bq);
 bool            BoundedQueue_push(BoundedQueue* bq, void* data);
 void*           BoundedQueue_pop(BoundedQueue* bq);
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Unbounded Queue
+////////////////////////////////////////////////////////////////////////////////
+typedef struct Node Node;
+
+struct Node {
+    void*   data;
+    Node*   next;
+};
+
+typedef struct {
+    Node*   first;
+    Node*   last;
+} Queue;
+
+Queue*      Queue_new();
+void        Queue_release(Queue* q);
+void        Queue_push(Queue* q, void *data);
+void*       Queue_pop(Queue* q);

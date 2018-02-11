@@ -20,7 +20,7 @@ add_executable(ncvm src/lock-free/uqueue.c
 set_property(TARGET ncvm PROPERTY C_STANDARD 11)
 
 find_package(Threads REQUIRED)
-add_executable(test_bqueue  test/lock-free/bqueue.c
-                            src/lock-free/bqueue.c)
+add_executable(test_uqueue  test/lock-free/uqueue.c
+                            src/lock-free/uqueue.c)
 
-target_link_libraries(test_bqueue "${CMAKE_THREAD_LIBS_INIT}")
+target_link_libraries(test_uqueue "${CMAKE_THREAD_LIBS_INIT}")

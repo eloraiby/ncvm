@@ -24,20 +24,11 @@
 
 void*
 producer(void* _bq) {
-    BoundedQueue*   bq  = _bq;
+    Queue*   bq  = _bq;
 
     size_t  sum = 0;
     for( size_t i = 1; i < 20 * MAX_QUEUE_SIZE; ++i ) {
-        bool    succeeded = false;
-        while( succeeded == false ) {
-            //fprintf(stderr, "Push: %u\n", i);
-            if( BoundedQueue_push(bq, (void*)i) ) {
-                succeeded   = true;
-            } else {
-                fprintf(stderr, "-- producer yielded (%u) --\n", i);
-                pthread_yield();
-            }
-        }
+        Queue_push(bq, (void*)i);
         sum += i;
     }
 
@@ -47,14 +38,15 @@ producer(void* _bq) {
 
 void*
 consumer(void* _bq) {
-    BoundedQueue*   bq  = _bq;
+    Queue*   bq  = _bq;
 
     size_t  sum = 0;
     for( size_t i = 1; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+
         bool    succeeded = false;
         while( succeeded == false ) {
             void* v = NULL;
-            if( (v = BoundedQueue_pop(bq)) != NULL ) {
+            if( (v = Queue_pop(bq)) != NULL ) {
                 //fprintf(stderr, "poped: %u\n", v);
                 sum += v;
                 succeeded   = true;
@@ -73,10 +65,9 @@ int
 main(int argc, char* argv[]) {
 
     pthread_t   prod, cons;
-    BoundedQueue    bq;
-    BoundedQueue_init(&bq, MAX_QUEUE_SIZE);
-    pthread_create(&prod, NULL, producer, &bq);
-    pthread_create(&cons, NULL, consumer, &bq);
+    Queue*      bq  = Queue_new();
+    pthread_create(&prod, NULL, producer, bq);
+    pthread_create(&cons, NULL, consumer, bq);
 
 
     size_t  sprod   = 0;
@@ -85,6 +76,6 @@ main(int argc, char* argv[]) {
     pthread_join(cons, (void**)&scons);
 
     assert( sprod == scons );
-    BoundedQueue_release(&bq);
+    Queue_release(bq);
     return 0;
 }
