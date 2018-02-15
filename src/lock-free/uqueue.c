@@ -44,12 +44,12 @@ Queue_release(Queue* q) {
 void
 Queue_push(Queue* q, void *data) {
 	Node*   n       = calloc(1, sizeof(Node));
-    Node*   last    = atomic_load_explicit(&q->last, memory_order_acquire);
-	while( !atomic_compare_exchange_weak(&q->last, &last, n) ) {
+    Node*   last    = NULL;
+    n->data         = data;
+    do {
         last    = atomic_load_explicit(&q->last, memory_order_acquire);
-	}
+    } while( !atomic_compare_exchange_weak(&q->last, &last, n) );
     atomic_store_explicit(&last->next , n, memory_order_release);
-    atomic_store_explicit(&last->data, data, memory_order_release);
 }
 
 void*
@@ -58,7 +58,7 @@ Queue_pop(Queue* q) {
         Node*   first   = atomic_load_explicit(&q->first, memory_order_acquire);
         Node*   next    = atomic_load_explicit(&first->next, memory_order_acquire);
 
-        if( !next || !first->data ) return NULL;   // we'r at the tail and push in progress
+        if( !next || !first->data ) continue;   // we'r at the tail and push in progress
 
 		while( !atomic_compare_exchange_strong(&q->first, &first, next) ) {
             first   = atomic_load_explicit(&q->first, memory_order_acquire);

@@ -104,6 +104,8 @@ BoundedQueue_push(BoundedQueue* bq, void* data) {
 
     uint32_t    count   = FirstLast_count(fl, bq->cap);
 
+    //while( atomic_load_explicit(&bq->elements))
+
     if( count >= bq->cap ) {
         return false;
     } else {
