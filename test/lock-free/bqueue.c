@@ -24,11 +24,11 @@
 
 void*
 producer0(void* _bq) {
-    Queue*   bq  = _bq;
+    BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
     for( size_t i = 1; i < 10 * MAX_QUEUE_SIZE; ++i ) {
-        Queue_push(bq, (void*)i);
+        BoundedQueue_push(bq, (void*)i);
         sum += i;
     }
 
@@ -42,7 +42,7 @@ producer1(void* _bq) {
 
     size_t  sum = 0;
     for( size_t i = 10 * MAX_QUEUE_SIZE; i < 20 * MAX_QUEUE_SIZE; ++i ) {
-        Queue_push(bq, (void*)i);
+        BoundedQueue_push(bq, (void*)i);
         sum += i;
     }
 
@@ -60,7 +60,7 @@ consumer0(void* _bq) {
         bool    succeeded = false;
         while( succeeded == false ) {
             void* v = NULL;
-            if( (v = Queue_pop(bq)) != NULL ) {
+            if( (v = BoundedQueue_pop(bq)) != NULL ) {
                 //fprintf(stderr, "poped: %u\n", v);
                 sum += v;
                 succeeded   = true;
@@ -85,7 +85,7 @@ consumer1(void* _bq) {
         bool    succeeded = false;
         while( succeeded == false ) {
             void* v = NULL;
-            if( (v = Queue_pop(bq)) != NULL ) {
+            if( (v = BoundedQueue_pop(bq)) != NULL ) {
                 //fprintf(stderr, "poped: %u\n", v);
                 sum += v;
                 succeeded   = true;
@@ -104,8 +104,8 @@ int
 main(int argc, char* argv[]) {
 
     pthread_t   prod0, prod1, cons0, cons1;
-    Queue       q;
-    Queue_init(&q);
+    BoundedQueue    q;
+    BoundedQueue_init(&q, MAX_QUEUE_SIZE);
     pthread_create(&prod0, NULL, producer0, &q);
     pthread_create(&prod1, NULL, producer1, &q);
     pthread_create(&cons0, NULL, consumer0, &q);
@@ -127,6 +127,6 @@ main(int argc, char* argv[]) {
         fprintf(stderr, "FAIL!!!\n");
     }
 
-    Queue_release(&q);
+    BoundedQueue_release(&q);
     return 0;
 }
