@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <stdio.h>
 
 #include "lock-free.h"
 
@@ -45,26 +47,33 @@ void
 Queue_push(Queue* q, void *data) {
 	Node*   n       = calloc(1, sizeof(Node));
     Node*   last    = NULL;
-    n->data         = data;
     do {
         last    = atomic_load_explicit(&q->last, memory_order_acquire);
     } while( !atomic_compare_exchange_weak(&q->last, &last, n) );
-    atomic_store_explicit(&last->next , n, memory_order_release);
+    atomic_store_explicit(&last->next, n, memory_order_release);
+    atomic_store_explicit(&last->data, data, memory_order_release);
 }
 
 void*
 Queue_pop(Queue* q) {
 	while( 1 ) {
-        Node*   first   = atomic_load_explicit(&q->first, memory_order_acquire);
-        Node*   next    = atomic_load_explicit(&first->next, memory_order_acquire);
+        Node*   first   = NULL;
+        Node*   next    = NULL;
+        void*   data    = NULL;
+        bool    set     = false;
 
-        if( !next || !first->data ) continue;   // we'r at the tail and push in progress
-
-		while( !atomic_compare_exchange_strong(&q->first, &first, next) ) {
+        do {
             first   = atomic_load_explicit(&q->first, memory_order_acquire);
             next    = atomic_load_explicit(&first->next, memory_order_acquire);
-		}
-        void* data  = atomic_load_explicit(&first->data, memory_order_acquire);
+            if( next == NULL ) { return NULL; } // queue is empty, nothing to do, bail!
+        } while( !atomic_compare_exchange_strong(&q->first, &first, next) );
+
+        // wait for the data to come in (this will block if the push was preempted but popping from
+        // other threads can continue regardless)
+        do {
+            data    = atomic_load_explicit(&first->data, memory_order_acquire);
+        } while( data == NULL );
+
         free(first);
 
         return data;
