@@ -56,27 +56,24 @@ Queue_push(Queue* q, void *data) {
 
 void*
 Queue_pop(Queue* q) {
-	while( 1 ) {
-        Node*   first   = NULL;
-        Node*   next    = NULL;
-        void*   data    = NULL;
-        bool    set     = false;
+    Node*   first   = NULL;
+    Node*   next    = NULL;
+    void*   data    = NULL;
 
-        do {
-            first   = atomic_load_explicit(&q->first, memory_order_acquire);
-            next    = atomic_load_explicit(&first->next, memory_order_acquire);
-            if( next == NULL ) { return NULL; } // queue is empty, nothing to do, bail!
-        } while( !atomic_compare_exchange_strong(&q->first, &first, next) );
+    do {
+        first   = atomic_load_explicit(&q->first, memory_order_acquire);
+        next    = atomic_load_explicit(&first->next, memory_order_acquire);
+        if( next == NULL ) { return NULL; } // queue is empty, nothing to do, bail!
+    } while( !atomic_compare_exchange_strong(&q->first, &first, next) );
 
-        // wait for the data to come in (this will block if the push was preempted but popping from
-        // other threads can continue regardless)
-        do {
-            data    = atomic_load_explicit(&first->data, memory_order_acquire);
-        } while( data == NULL );
+    // wait for the data to come in (this will block if the push was preempted but popping from
+    // other threads can continue regardless)
+    do {
+        data    = atomic_load_explicit(&first->data, memory_order_acquire);
+    } while( data == NULL );
 
-        free(first);
+    free(first);
 
-        return data;
-	}
+    return data;
 }
 
