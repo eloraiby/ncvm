@@ -104,11 +104,12 @@ int
 main(int argc, char* argv[]) {
 
     pthread_t   prod0, prod1, cons0, cons1;
-    Queue*      bq  = Queue_new();
-    pthread_create(&prod0, NULL, producer0, bq);
-    pthread_create(&prod1, NULL, producer1, bq);
-    pthread_create(&cons0, NULL, consumer0, bq);
-    pthread_create(&cons1, NULL, consumer1, bq);
+    Queue       bq;
+    Queue_init(&bq);
+    pthread_create(&prod0, NULL, producer0, &bq);
+    pthread_create(&prod1, NULL, producer1, &bq);
+    pthread_create(&cons0, NULL, consumer0, &bq);
+    pthread_create(&cons1, NULL, consumer1, &bq);
 
 
     size_t  sprod0  = 0;
@@ -126,6 +127,6 @@ main(int argc, char* argv[]) {
         fprintf(stderr, "FAIL!!!\n");
     }
 
-    Queue_release(bq);
+    Queue_release(&bq);
     return 0;
 }

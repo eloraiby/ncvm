@@ -62,7 +62,7 @@ typedef struct {
     Node*   last;
 } Queue;
 
-Queue*      Queue_new();
+Queue*      Queue_init(Queue* q);
 void        Queue_release(Queue* q);
 void        Queue_push(Queue* q, void *data);
 void*       Queue_pop(Queue* q);

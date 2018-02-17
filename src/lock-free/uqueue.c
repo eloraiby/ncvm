@@ -21,14 +21,15 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "lock-free.h"
 
 Queue*
-Queue_new() {
-	Queue*  q   = calloc(1, sizeof(Queue));
-	q->first    = q->last   = calloc(1, sizeof(Node));
-	return q;
+Queue_init(Queue* q) {
+    memset(q, 0, sizeof(Queue));
+    q->first    = q->last   = calloc(1, sizeof(Node));
+    return q;
 }
 
 void
@@ -40,7 +41,6 @@ Queue_release(Queue* q) {
 		free(curr);
 		curr    = tmp;
 	}
-	free(q);
 }
 
 void
