@@ -27,18 +27,16 @@ typedef union {
     } fl;
     uint64_t    u64;
 } FirstLast;
-/*
+
 typedef struct {
-    FirstLast   fl;
-    uint32_t    cap;
-    void**      elements;
-} BoundedQueue;
-*/
+    uint64_t    seq;
+    void*       data;
+} Element;
 
 typedef struct {
     FirstLast   fl;
     uint32_t    cap;
-    void**      elements;
+    Element*    elements;
 } BoundedQueue;
 
 BoundedQueue*   BoundedQueue_init(BoundedQueue* bq, uint32_t cap);

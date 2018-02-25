@@ -52,7 +52,7 @@ BoundedQueue*
 BoundedQueue_init(BoundedQueue* bq, uint32_t cap) {
     memset(bq, 0, sizeof(BoundedQueue));
     bq->cap             = cap;
-    bq->elements        = calloc(cap, sizeof(void*));
+    bq->elements        = calloc(cap, sizeof(Element));
     return bq;
 }
 
@@ -60,72 +60,27 @@ void
 BoundedQueue_release(BoundedQueue* bq) {
     free(bq->elements);
 }
-/*
+
 bool
 BoundedQueue_push(BoundedQueue* bq, void* data) {
-    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acq_rel);
-    uint32_t    cap     = bq->cap;
-    void*       v       = NULL;
+    Element*    el  = NULL;
+    FirstLast   fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+    while(true) {
+        el  = &bq->elements[fl.fl.last];
+        uint32_t seq  = atomic_load_explicit(&el->data.seq_id, memory_order_acquire);
+        int32_t diff  = (int32_t)seq - (int32_t)fl.fl.last;
+        if( diff == 0 ) {
 
-    uint32_t    idx     = 0;
-    do {
-        if( FirstLast_remaining(fl, cap) == 0 ) return false;
-        idx             = fl.fl.last % cap;
-        v = atomic_load_explicit(&(bq->elements[fl.fl.first % cap]), memory_order_acq_rel);
-    } while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incLast(fl).u64) );
+        } else {
 
-    atomic_store_explicit(&(bq->elements[idx]), data, memory_order_acq_rel);
+        }
 
-    return true;
+    }
+
+    return false;
 }
 
 void*
 BoundedQueue_pop(BoundedQueue* bq) {
-    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acq_rel);
-    uint32_t    cap     = bq->cap;
-
-    void*       v       = NULL;
-
-    do {
-        if( FirstLast_count(fl, cap) == 0 ) { return NULL; }    // if no more space
-        uint32_t    idx = fl.fl.first % cap;
-        v   = atomic_load_explicit(&(bq->elements[idx]), memory_order_acquire);
-
-    } while( !atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, FirstLast_incFirst(fl).u64) );
-
-
-    return v;
-}
-*/
-
-bool
-BoundedQueue_push(BoundedQueue* bq, void* data) {
-    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
-
-    uint32_t    count   = FirstLast_count(fl, bq->cap);
-
-    if( count >= bq->cap ) {
-        return false;
-    } else {
-        FirstLast   inc = FirstLast_incLast(fl);
-        atomic_store_explicit(&bq->fl.u64, inc.u64, memory_order_release);
-        atomic_store_explicit(&bq->elements[fl.fl.last % bq->cap], data, memory_order_release);
-        return true;
-    }
-}
-
-void*
-BoundedQueue_pop(BoundedQueue* bq) {
-    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
-
-    uint32_t    count   = FirstLast_count(fl, bq->cap);
-
-    if( count == 0 ) {
-        return NULL;
-    } else {
-        FirstLast   inc = FirstLast_incFirst(fl);
-        void*   data    = atomic_load_explicit(&bq->elements[fl.fl.first % bq->cap], memory_order_acquire);
-        atomic_store_explicit(&bq->fl.u64, inc.u64, memory_order_release);
-        return data;
-    }
+    return NULL;
 }
