@@ -67,20 +67,51 @@ BoundedQueue_push(BoundedQueue* bq, void* data) {
     FirstLast   fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
     while(true) {
         el  = &bq->elements[fl.fl.last];
-        uint32_t seq  = atomic_load_explicit(&el->data.seq_id, memory_order_acquire);
+        uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
         int32_t diff  = (int32_t)seq - (int32_t)fl.fl.last;
         if( diff == 0 ) {
-
+            FirstLast   next    = fl;
+            ++next.fl.last;
+            if( atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, next.u64) ) {
+                break;
+            }
         } else {
-
+            if( diff < 0 ) { return false; }
+            else {
+                fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+            }
         }
-
     }
 
-    return false;
+    atomic_store_explicit(&el->data, data, memory_order_release);
+    atomic_store_explicit(&el->seq, fl.fl.last + 1, memory_order_release);
+    return true;
 }
 
 void*
 BoundedQueue_pop(BoundedQueue* bq) {
-    return NULL;
+    Element*    el      = NULL;
+    void*       data    = NULL;
+    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+    while(true) {
+        el  = &bq->elements[fl.fl.first];
+        uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
+        int32_t diff  = (int32_t)seq - ((int32_t)fl.fl.first + 1);
+        if( diff == 0 ) {
+            FirstLast   next    = fl;
+            ++next.fl.first;
+            if( atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, next.u64) ) {
+                break;
+            }
+        } else {
+            if( diff < 0 ) { return NULL; }
+            else {
+                fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+            }
+        }
+    }
+
+    data    = atomic_load_explicit(&el->data, memory_order_acquire);
+    atomic_store_explicit(&el->seq, fl.fl.first + bq->cap, memory_order_release);
+    return data;
 }
