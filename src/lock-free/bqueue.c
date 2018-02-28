@@ -20,39 +20,18 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "lock-free.h"
-
-static inline
-FirstLast
-FirstLast_incFirst(FirstLast fl) {
-    return (FirstLast) { .fl = { .first = fl.fl.first + 1, .last = fl.fl.last } };
-}
-
-static inline
-FirstLast
-FirstLast_incLast(FirstLast fl) {
-    return (FirstLast) { .fl = { .first = fl.fl.first, .last = fl.fl.last + 1 } };
-}
-
-static inline
-uint32_t
-FirstLast_remaining(FirstLast fl, uint32_t cap) {
-    return (fl.fl.first > fl.fl.last) ? (fl.fl.last - fl.fl.first) : (fl.fl.last + cap - fl.fl.first);
-}
-
-static inline
-uint32_t
-FirstLast_count(FirstLast fl, uint32_t cap) {
-    uint32_t    remaining   = FirstLast_remaining(fl, cap);
-    return cap - remaining;
-}
 
 BoundedQueue*
 BoundedQueue_init(BoundedQueue* bq, uint32_t cap) {
     memset(bq, 0, sizeof(BoundedQueue));
     bq->cap             = cap;
     bq->elements        = calloc(cap, sizeof(Element));
+    for( uint32_t i = 0; i < cap; ++i ) {
+        atomic_store_explicit(&bq->elements[i].seq, i, memory_order_release);
+    }
     return bq;
 }
 
@@ -64,27 +43,23 @@ BoundedQueue_release(BoundedQueue* bq) {
 bool
 BoundedQueue_push(BoundedQueue* bq, void* data) {
     Element*    el  = NULL;
-    FirstLast   fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+    uint32_t    last    = atomic_load_explicit(&bq->last, memory_order_acquire);
     while(true) {
-        el  = &bq->elements[fl.fl.last];
+        el  = &bq->elements[last % bq->cap];
         uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
-        int32_t diff  = (int32_t)seq - (int32_t)fl.fl.last;
+        int32_t diff  = (int32_t)seq - (int32_t)last;
         if( diff == 0 ) {
-            FirstLast   next    = fl;
-            ++next.fl.last;
-            if( atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, next.u64) ) {
+            uint32_t   next    = last;
+            ++next;
+            if( atomic_compare_exchange_weak(&bq->last, &last, next) ) {
                 break;
             }
-        } else {
-            if( diff < 0 ) { return false; }
-            else {
-                fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
-            }
-        }
+        } else if( diff < 0 ) { return false; }
+        last    = atomic_load_explicit(&bq->last, memory_order_acquire);
     }
 
     atomic_store_explicit(&el->data, data, memory_order_release);
-    atomic_store_explicit(&el->seq, fl.fl.last + 1, memory_order_release);
+    atomic_store_explicit(&el->seq, last + 1, memory_order_release);
     return true;
 }
 
@@ -92,26 +67,23 @@ void*
 BoundedQueue_pop(BoundedQueue* bq) {
     Element*    el      = NULL;
     void*       data    = NULL;
-    FirstLast   fl      = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
+    uint32_t    first   = atomic_load_explicit(&bq->first, memory_order_acquire);
     while(true) {
-        el  = &bq->elements[fl.fl.first];
+        el  = &bq->elements[first % bq->cap];
         uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
-        int32_t diff  = (int32_t)seq - ((int32_t)fl.fl.first + 1);
+        int32_t diff  = (int32_t)seq - ((int32_t)first + 1);
         if( diff == 0 ) {
-            FirstLast   next    = fl;
-            ++next.fl.first;
-            if( atomic_compare_exchange_weak(&bq->fl.u64, &fl.u64, next.u64) ) {
+            uint32_t   next = first;
+            ++next;
+            if( atomic_compare_exchange_weak(&bq->first, &first, next) ) {
                 break;
             }
-        } else {
-            if( diff < 0 ) { return NULL; }
-            else {
-                fl  = (FirstLast)atomic_load_explicit(&bq->fl.u64, memory_order_acquire);
-            }
-        }
+        } else if( diff < 0 ) { return NULL; }
+
+        first  = atomic_load_explicit(&bq->first, memory_order_acquire);
     }
 
     data    = atomic_load_explicit(&el->data, memory_order_acquire);
-    atomic_store_explicit(&el->seq, fl.fl.first + bq->cap, memory_order_release);
+    atomic_store_explicit(&el->seq, first + bq->cap, memory_order_release);
     return data;
 }

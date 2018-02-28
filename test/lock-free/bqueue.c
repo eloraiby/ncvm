@@ -21,7 +21,7 @@
 #include "../../src/lock-free/lock-free.h"
 
 #define MAX_QUEUE_SIZE      1024
-
+#define SWITCH 1
 void*
 producer0(void* _bq) {
     BoundedQueue*   bq  = _bq;
@@ -41,7 +41,7 @@ producer1(void* _bq) {
     BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 10 * MAX_QUEUE_SIZE; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1 * MAX_QUEUE_SIZE; i < 2 * MAX_QUEUE_SIZE; ++i ) {
         BoundedQueue_push(bq, (void*)i);
         sum += i;
     }
@@ -61,11 +61,9 @@ consumer0(void* _bq) {
         while( succeeded == false ) {
             void* v = NULL;
             if( (v = BoundedQueue_pop(bq)) != NULL ) {
-                //fprintf(stderr, "poped: %u\n", v);
                 sum += (size_t)v;
                 succeeded   = true;
             } else {
-                fprintf(stderr, "-- consumer0 yielded (%u) --\n", i);
                 pthread_yield();
             }
         }
@@ -80,7 +78,7 @@ consumer1(void* _bq) {
    BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 10 * MAX_QUEUE_SIZE; i < 20 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1 * MAX_QUEUE_SIZE; i < 2 * MAX_QUEUE_SIZE; ++i ) {
 
         bool    succeeded = false;
         while( succeeded == false ) {
@@ -106,11 +104,11 @@ main(int argc, char* argv[]) {
     pthread_t   prod0, prod1, cons0, cons1;
     BoundedQueue    q;
     BoundedQueue_init(&q, MAX_QUEUE_SIZE);
-/*    pthread_create(&prod0, NULL, producer0, &q);
+#ifdef SWITCH
+    pthread_create(&prod0, NULL, producer0, &q);
     pthread_create(&prod1, NULL, producer1, &q);
     pthread_create(&cons0, NULL, consumer0, &q);
     pthread_create(&cons1, NULL, consumer1, &q);
-
 
     size_t  sprod0  = 0;
     size_t  sprod1  = 0;
@@ -120,16 +118,17 @@ main(int argc, char* argv[]) {
     pthread_join(prod1, (void**)&sprod1);
     pthread_join(cons0, (void**)&scons0);
     pthread_join(cons1, (void**)&scons1);
-*/
+#else
     size_t  sprod0  = 0;
     size_t  sprod1  = 0;
     size_t  scons0  = 0;
     size_t  scons1  = 0;
 
     sprod0 = (size_t)producer0(&q);
-//    sprod1 = (size_t)producer1(&q);
     scons0 = (size_t)consumer0(&q);
-//    scons1 = (size_t)consumer1(&q);
+    sprod1 = (size_t)producer1(&q);
+    scons1 = (size_t)consumer1(&q);
+#endif
     assert( (sprod0 + sprod1) == (scons0 + scons1) );
 
     if( (sprod0 + sprod1) != (scons0 + scons1) ) {

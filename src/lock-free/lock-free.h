@@ -20,21 +20,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-typedef union {
-    struct {
-        uint32_t    first;
-        uint32_t    last;
-    } fl;
-    uint64_t    u64;
-} FirstLast;
-
 typedef struct {
     uint64_t    seq;
     void*       data;
 } Element;
 
 typedef struct {
-    FirstLast   fl;
+    uint32_t    first;
+    uint32_t    last;
     uint32_t    cap;
     Element*    elements;
 } BoundedQueue;
