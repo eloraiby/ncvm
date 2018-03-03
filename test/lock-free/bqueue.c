@@ -28,7 +28,10 @@ producer0(void* _bq) {
 
     size_t  sum = 0;
     for( size_t i = 1; i < 1 * MAX_QUEUE_SIZE; ++i ) {
-        BoundedQueue_push(bq, (void*)i);
+        while(BoundedQueue_push(bq, (void*)i) == false) {
+            fprintf(stderr, "-- producer0 yielded (%u) --\n", i);
+            pthread_yield();
+        }
         sum += i;
     }
 
@@ -42,7 +45,10 @@ producer1(void* _bq) {
 
     size_t  sum = 0;
     for( size_t i = 1 * MAX_QUEUE_SIZE; i < 2 * MAX_QUEUE_SIZE; ++i ) {
-        BoundedQueue_push(bq, (void*)i);
+        while( BoundedQueue_push(bq, (void*)i) == false) {
+            fprintf(stderr, "-- producer1 yielded (%u) --\n", i);
+            pthread_yield();
+        }
         sum += i;
     }
 
@@ -64,6 +70,7 @@ consumer0(void* _bq) {
                 sum += (size_t)v;
                 succeeded   = true;
             } else {
+                fprintf(stderr, "-- consumer0 yielded (%u) --\n", i);
                 pthread_yield();
             }
         }
