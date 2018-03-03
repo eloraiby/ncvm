@@ -370,6 +370,20 @@ endLambda(Process* proc) {
 }
 
 static
+void
+stdAlloc(Process* proc) {
+    Value       ref      = (Value) { .ref = calloc(proc->readState.s0.u32, proc->readState.s1.u32) };
+    vmPushValue(proc, ref);
+}
+
+
+static
+void
+stdRelease(Process* proc) {
+    free(proc->readState.s0.ref);
+}
+
+static
 const NativeFunctionEntry entries[]  = {
 	{ "repl",       false,  vmReadEvalPrintLoop,        ALL,    ALL },
 
@@ -381,6 +395,9 @@ const NativeFunctionEntry entries[]  = {
 	{ "@",          true,   wordAddress,                ALL,    ALL },
 	{ "{",          true,   startLambda,                ALL,    ALL },
 	{ "}",          true,   endLambda,                  ALL,    ALL },
+
+    { "alloc",      false,  stdAlloc,                   2,      1   },
+    { "release",    false,  stdRelease,                 1,      0   },
 
 	{ ".i",         false,  printInt,                   1,      0   },
 	{ "lsws",       false,  listWords,                  0,      0   },
