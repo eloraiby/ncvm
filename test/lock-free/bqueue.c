@@ -20,14 +20,14 @@
 #include <assert.h>
 #include "../../src/lock-free/lock-free.h"
 
-#define MAX_QUEUE_SIZE      64
+#define MAX_QUEUE_SIZE      1024
 #define SWITCH 1
 void*
 producer0(void* _bq) {
     BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1; i < 1 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1; i < 1024 * MAX_QUEUE_SIZE; ++i ) {
         while(BoundedQueue_push(bq, (void*)i) == false) {
             fprintf(stderr, "-- producer0 yielded (%u) --\n", i);
             pthread_yield();
@@ -44,7 +44,7 @@ producer1(void* _bq) {
     BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1 * MAX_QUEUE_SIZE; i < 2 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1024 * MAX_QUEUE_SIZE; i < 2048 * MAX_QUEUE_SIZE; ++i ) {
         while( BoundedQueue_push(bq, (void*)i) == false) {
             fprintf(stderr, "-- producer1 yielded (%u) --\n", i);
             pthread_yield();
@@ -61,7 +61,7 @@ consumer0(void* _bq) {
     BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1; i < 1 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1; i < 1024 * MAX_QUEUE_SIZE; ++i ) {
 
         bool    succeeded = false;
         while( succeeded == false ) {
@@ -85,7 +85,7 @@ consumer1(void* _bq) {
    BoundedQueue*   bq  = _bq;
 
     size_t  sum = 0;
-    for( size_t i = 1 * MAX_QUEUE_SIZE; i < 2 * MAX_QUEUE_SIZE; ++i ) {
+    for( size_t i = 1024 * MAX_QUEUE_SIZE; i < 2048 * MAX_QUEUE_SIZE; ++i ) {
 
         bool    succeeded = false;
         while( succeeded == false ) {

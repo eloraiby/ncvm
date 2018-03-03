@@ -28,9 +28,11 @@ BoundedQueue*
 BoundedQueue_init(BoundedQueue* bq, uint32_t cap) {
     memset(bq, 0, sizeof(BoundedQueue));
     bq->cap             = cap;
+    //bq->first           = 0xFFFFFFF0;
+    //bq->last            = 0xFFFFFFF0;
     bq->elements        = calloc(cap, sizeof(Element));
     for( uint32_t i = 0; i < cap; ++i ) {
-        atomic_store_explicit(&bq->elements[i].seq, i, memory_order_release);
+        atomic_store_explicit(&bq->elements[i].seq, i /* + 0xFFFFFFF0*/, memory_order_release);
     }
     return bq;
 }
@@ -47,13 +49,9 @@ BoundedQueue_push(BoundedQueue* bq, void* data) {
     while(true) {
         el  = &bq->elements[last % bq->cap];
         uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
-        int32_t diff  = (int32_t)seq - (int32_t)last;
-        if( diff == 0 ) {
-            uint32_t   next    = last;
-            ++next;
-            if( atomic_compare_exchange_weak(&bq->last, &last, next) ) {
-                break;
-            }
+        int32_t diff  = (int32_t)(seq) - (int32_t)(last);
+        if( diff == 0 && atomic_compare_exchange_weak(&bq->last, &last, last + 1) ) {
+            break;
         } else if( diff < 0 ) { return false; }
         last    = atomic_load_explicit(&bq->last, memory_order_acquire);
     }
@@ -71,13 +69,9 @@ BoundedQueue_pop(BoundedQueue* bq) {
     while(true) {
         el  = &bq->elements[first % bq->cap];
         uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);
-        int32_t diff  = (int32_t)seq - ((int32_t)first + 1);
-        if( diff == 0 ) {
-            uint32_t   next = first;
-            ++next;
-            if( atomic_compare_exchange_weak(&bq->first, &first, next) ) {
-                break;
-            }
+        int32_t diff  = (int32_t)(seq) - (int32_t)((first + 1));
+        if( diff == 0 && atomic_compare_exchange_weak(&bq->first, &first, first + 1) ) {
+            break;
         } else if( diff < 0 ) { return NULL; }
 
         first  = atomic_load_explicit(&bq->first, memory_order_acquire);
