@@ -80,7 +80,8 @@ typedef enum {
 	OP_UNMAP,           // release memory
 
 	OP_YIELD,           // yield the current thread, next execution will continue at IP + 1
-	OP_SEND,            // send a message to another thread
+    OP_TRY_SEND,        // send a message to another thread
+    OP_TRY_RECV,        // try receive a message
 	OP_SPAWN,           // spawn another thread
 	OP_PID,             // current process id
 
@@ -155,8 +156,9 @@ static Opcode opcodes[OP_MAX] = {
 	[OP_UNMAP]      = { "unmap",    1,  0 },    // addr --
 
 	[OP_YIELD]      = { "yield",    0,  0 },    // --
-	[OP_SEND]       = { "send",     3,  0 },    // mem-addr mem-size pid --
-	[OP_SPAWN]      = { "spawn",    2,  1 },    // queue-size lambda -- pid
+    [OP_TRY_SEND]   = { "try.send", 3,  1 },    // mem-addr mem-size pid --
+    [OP_TRY_RECV]   = { "try.recv", 1,  2 },    // pid -- mem-addr mem-size
+    [OP_SPAWN]      = { "spawn",    2,  1 },    // queue-size lambda -- pid
 	[OP_PID]        = { "pid",      0,  1 },    // -- pid
 
     [OP_VS]         = { "vs.size",  0,  1 },
@@ -505,8 +507,9 @@ vmExecute(Process* proc) {
 
 		case OP_MAP:    pushValue(proc, (Value) { .ref = calloc(proc->readState.s0.u32, 1) });  break;
 		case OP_UNMAP:  free(proc->readState.s0.ref);   break;
-		case OP_SEND:   break; /* TODO */
-		case OP_SPAWN: /* TODO */
+        case OP_TRY_SEND:   break; /* TODO */
+        case OP_TRY_RECV:   break; /* TODO */
+        case OP_SPAWN: /* TODO */
 		case OP_PID: /* TODO */
 			break;
 
