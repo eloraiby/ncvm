@@ -28,11 +28,9 @@ BoundedQueue*
 BoundedQueue_init(BoundedQueue* bq, uint32_t cap) {
     memset(bq, 0, sizeof(BoundedQueue));
     bq->cap             = cap;
-    //bq->first           = 0xFFFFFFF0;
-    //bq->last            = 0xFFFFFFF0;
     bq->elements        = calloc(cap, sizeof(Element));
     for( uint32_t i = 0; i < cap; ++i ) {
-        atomic_store_explicit(&bq->elements[i].seq, i /* + 0xFFFFFFF0*/, memory_order_release);
+        atomic_store_explicit(&bq->elements[i].seq, i, memory_order_release);
     }
     return bq;
 }
@@ -46,6 +44,7 @@ bool
 BoundedQueue_push(BoundedQueue* bq, void* data) {
     Element*    el  = NULL;
     uint32_t    last    = atomic_load_explicit(&bq->last, memory_order_acquire);
+
     while(true) {
         el  = &bq->elements[last % bq->cap];
         uint32_t seq  = atomic_load_explicit(&el->seq, memory_order_acquire);

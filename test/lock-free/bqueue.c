@@ -20,7 +20,7 @@
 #include <assert.h>
 #include "../../src/lock-free/lock-free.h"
 
-#define MAX_QUEUE_SIZE      1024
+#define MAX_QUEUE_SIZE      32
 #define SWITCH 1
 void*
 producer0(void* _bq) {
