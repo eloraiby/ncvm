@@ -263,19 +263,6 @@ void        vmPopInstruction(VM* vm);
 void        vmPushCompilerInstruction   (VM* vm, uint32_t opcode);
 void        vmPopCompilerInstruction    (VM* vm);
 
-//
-// Some day, these will be the ISA for a soft-fpga microcontroller
-//
-//typedef enum {
-//    ARITH           = 0x00,
-//    LOGIC           = 0x01,
-//    COMP            = 0x02,
-//    CONTROL         = 0x03,
-//    LOAD_STORE      = 0x04,
-//
-// } OP_TYPE;
-//
-
 
 Stream*     vmStreamOpenFile(VM* vm, const char* name, STREAM_MODE mode);
 Stream*     vmStreamFromFile(VM* vm, FILE* f, STREAM_MODE mode);
